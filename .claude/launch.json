@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "k8s-manager-dev",
+      "runtimeExecutable": "/Users/karthikvellingiri/claude/k8s-access/k8s-manager/.claude/start-dev.sh",
+      "runtimeArgs": [],
+      "port": 1420
+    }
+  ]
+}

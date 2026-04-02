@@ -1,0 +1,25 @@
+[package]
+name = "k8s-manager"
+version = "0.1.0"
+description = "K8s Manager - Desktop Kubernetes UI"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "k8s_manager_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+kube = { version = "0.99", features = ["runtime", "derive", "ws"] }
+k8s-openapi = { version = "0.24", features = ["latest"] }
+futures = "0.3"
+anyhow = "1"
+thiserror = "2"
