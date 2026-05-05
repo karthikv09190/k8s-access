@@ -5,6 +5,7 @@ import { TopBar } from "./components/layout/TopBar";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PodsPage } from "./pages/PodsPage";
 import { ComparePage } from "./pages/ComparePage";
+import { EventsPage } from "./pages/EventsPage";
 import { GenericResourcePage } from "./pages/GenericResourcePage";
 import { StatusBadge } from "./components/resources/ResourceTable";
 import { checkKubectl, KubectlStatus } from "./lib/tauri";
@@ -35,6 +36,8 @@ function PageRouter({
       return <PodsPage key={onRefreshKey} />;
     case "compare":
       return <ComparePage key={onRefreshKey} />;
+    case "events":
+      return <EventsPage key={onRefreshKey} />;
     case "deployments":
       return (
         <GenericResourcePage
@@ -42,7 +45,7 @@ function PageRouter({
           title="Deployments"
           kind="Deployment"
           invokeCmd="list_deployments"
-          actionTabs={["yaml", "edit", "describe", "scale", "restart"]}
+          actionTabs={["yaml", "edit", "describe", "events", "scale", "restart"]}
           extraColumns={[
             {
               header: "Replicas",
@@ -72,7 +75,7 @@ function PageRouter({
           title="StatefulSets"
           kind="StatefulSet"
           invokeCmd="list_statefulsets"
-          actionTabs={["yaml", "edit", "describe", "scale", "restart"]}
+          actionTabs={["yaml", "edit", "describe", "events", "scale", "restart"]}
           extraColumns={[
             {
               header: "Replicas",
@@ -93,7 +96,7 @@ function PageRouter({
           title="DaemonSets"
           kind="DaemonSet"
           invokeCmd="list_daemonsets"
-          actionTabs={["yaml", "edit", "describe", "restart"]}
+          actionTabs={["yaml", "edit", "describe", "events", "restart"]}
           extraColumns={[
             {
               header: "Desired/Ready",
@@ -114,7 +117,7 @@ function PageRouter({
           title="ReplicaSets"
           kind="ReplicaSet"
           invokeCmd="list_replicasets"
-          actionTabs={["yaml", "edit", "describe", "scale"]}
+          actionTabs={["yaml", "edit", "describe", "events", "scale"]}
         />
       );
     case "jobs":
@@ -124,7 +127,7 @@ function PageRouter({
           title="Jobs"
           kind="Job"
           invokeCmd="list_jobs"
-          actionTabs={["yaml", "edit", "describe"]}
+          actionTabs={["yaml", "edit", "describe", "events"]}
           extraColumns={[
             {
               header: "Status",
@@ -147,7 +150,7 @@ function PageRouter({
           title="CronJobs"
           kind="CronJob"
           invokeCmd="list_cronjobs"
-          actionTabs={["trigger", "yaml", "edit", "describe"]}
+          actionTabs={["trigger", "yaml", "edit", "describe", "events"]}
           extraColumns={[
             {
               header: "Schedule",
@@ -187,7 +190,7 @@ function PageRouter({
           kind="Service"
           invokeCmd="list_services"
           supportsDelete
-          actionTabs={["yaml", "edit", "describe", "portforward"]}
+          actionTabs={["yaml", "edit", "describe", "events", "portforward"]}
           extraColumns={[
             {
               header: "Type",
@@ -213,7 +216,7 @@ function PageRouter({
           title="Ingresses"
           kind="Ingress"
           invokeCmd="list_ingresses"
-          actionTabs={["rules", "yaml", "edit", "describe"]}
+          actionTabs={["rules", "yaml", "edit", "describe", "events"]}
           extraColumns={[
             {
               header: "Hosts",
@@ -293,7 +296,7 @@ function PageRouter({
           title="Secrets"
           kind="Secret"
           invokeCmd="list_secrets"
-          actionTabs={["values", "yaml", "describe"]}
+          actionTabs={["values", "yaml", "describe", "events"]}
           extraColumns={[
             {
               header: "Type",
@@ -372,7 +375,7 @@ function PageRouter({
           kind="Node"
           invokeCmd="list_nodes"
           namespaced={false}
-          actionTabs={["nodemetrics", "yaml", "describe"]}
+          actionTabs={["nodemetrics", "yaml", "describe", "events"]}
           extraColumns={[
             {
               header: "Status",
@@ -500,6 +503,18 @@ function StartupBanner() {
 export default function App() {
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Global Cmd+K — wired to global search (Phase 2)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        // TODO Phase 2: open GlobalSearch
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

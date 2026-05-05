@@ -70,7 +70,7 @@ export function ResourceTable<T>({
                 key={key}
                 onClick={() => onSelect?.(row)}
                 className={cn(
-                  "border-b border-slate-800/50 transition-colors",
+                  "border-b border-slate-800/50 transition-colors group",
                   onSelect && "cursor-pointer",
                   isSelected
                     ? "bg-blue-600/10"

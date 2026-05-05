@@ -4,4 +4,5 @@ pub mod logs;
 pub mod compare;
 pub mod metrics;
 pub mod exec;
+pub mod events;
 pub mod portforward;

@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { X, ScrollText, Terminal, Wifi, FileCode, Pencil } from "lucide-react";
+import { X, ScrollText, Terminal, Wifi, FileCode, Pencil, Activity, Copy, Check } from "lucide-react";
 import { PodLogsPanel } from "../logs/PodLogsPanel";
 import { ExecPanel } from "./ExecPanel";
 import { PortForwardPanel } from "./PortForwardPanel";
 import { YamlPanel } from "../resources/YamlPanel";
 import { EditYamlPanel } from "../resources/EditYamlPanel";
+import { EventsPanel } from "../resources/EventsPanel";
 
-type Tab = "logs" | "exec" | "portforward" | "yaml" | "edit";
+type Tab = "logs" | "exec" | "events" | "portforward" | "yaml" | "edit";
 
 interface Props {
   context: string;
@@ -17,6 +18,7 @@ interface Props {
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "logs", label: "Logs", icon: ScrollText },
   { id: "exec", label: "Exec", icon: Terminal },
+  { id: "events", label: "Events", icon: Activity },
   { id: "portforward", label: "Port Fwd", icon: Wifi },
   { id: "yaml", label: "YAML", icon: FileCode },
   { id: "edit", label: "Edit", icon: Pencil },
@@ -24,9 +26,17 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 export function PodActionsPanel({ context, pod, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("logs");
+  const [copied, setCopied] = useState(false);
 
   const namespace = pod.metadata?.namespace ?? "";
   const podName = pod.metadata?.name ?? "";
+
+  const copyName = () => {
+    navigator.clipboard.writeText(podName).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    });
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-950">
@@ -36,6 +46,13 @@ export function PodActionsPanel({ context, pod, onClose }: Props) {
           <p className="font-mono text-xs text-slate-200 truncate">{podName}</p>
           <p className="text-xs text-slate-500 truncate">{namespace}</p>
         </div>
+        <button
+          onClick={copyName}
+          title="Copy pod name"
+          className="shrink-0 text-slate-500 hover:text-slate-300 p-0.5 rounded hover:bg-slate-800"
+        >
+          {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+        </button>
         <button
           onClick={onClose}
           className="shrink-0 text-slate-500 hover:text-slate-300 p-0.5 rounded hover:bg-slate-800"
@@ -69,6 +86,9 @@ export function PodActionsPanel({ context, pod, onClose }: Props) {
         )}
         {activeTab === "exec" && (
           <ExecPanel context={context} namespace={namespace} podName={podName} />
+        )}
+        {activeTab === "events" && (
+          <EventsPanel context={context} namespace={namespace} kind="Pod" name={podName} />
         )}
         {activeTab === "portforward" && (
           <PortForwardPanel

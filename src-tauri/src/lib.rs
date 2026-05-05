@@ -30,6 +30,7 @@ fn fix_path_for_app_bundle() {
 use commands::{
     clusters::{check_kubectl, list_contexts, list_namespaces},
     compare::compare_clusters,
+    events::list_events,
     exec::{
         apply_resource_yaml, describe_resource, exec_pod_command, patch_secret, restart_resource,
         scale_resource, trigger_cronjob,
@@ -103,6 +104,8 @@ pub fn run() {
             list_port_forwards,
             // compare
             compare_clusters,
+            // events
+            list_events,
             // metrics
             get_cluster_overview,
             get_node_metrics,

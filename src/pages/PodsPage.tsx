@@ -1,9 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "../store/app";
 import { listPods, deleteResource } from "../lib/tauri";
 import { ResourceTable, StatusBadge, type Column } from "../components/resources/ResourceTable";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { RefreshSelect } from "../components/ui/RefreshSelect";
+import { ContainerStatusIcons } from "../components/pods/ContainerStatusIcons";
+import { useKeyboardNav } from "../hooks/useKeyboardNav";
 import { age } from "../lib/utils";
 import { PodActionsPanel } from "../components/pods/PodActionsPanel";
 import { Search, X } from "lucide-react";
@@ -15,13 +18,15 @@ export function PodsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [pendingDelete, setPendingDelete] = useState<any | null>(null);
+  const [refreshInterval, setRefreshInterval] = useState(15_000);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["pods", activeContext, activeNamespace],
     queryFn: () =>
       listPods({ context: activeContext, namespace: activeNamespace || undefined }),
     enabled: !!activeContext,
-    refetchInterval: 15000,
+    refetchInterval: refreshInterval || false,
   });
 
   const pods = data as any[];
@@ -87,6 +92,13 @@ export function PodsPage() {
       width: "70px",
     },
     {
+      header: "Containers",
+      accessor: (p) => (
+        <ContainerStatusIcons containerStatuses={p.status?.containerStatuses ?? []} />
+      ),
+      width: "80px",
+    },
+    {
       header: "Node",
       accessor: (p) => (
         <span className="text-xs text-slate-500 font-mono">{p.spec?.nodeName ?? "-"}</span>
@@ -101,9 +113,19 @@ export function PodsPage() {
     },
   ];
 
-  const selectedPod = pods.find((p) => p.metadata?.name === selected);
-
   const handleDelete = (pod: any) => setPendingDelete(pod);
+
+  useKeyboardNav({
+    items: filtered,
+    selectedKey: selected,
+    getKey: (p) => p.metadata?.uid ?? p.metadata?.name,
+    onSelect: (p) => setSelected(p.metadata?.name),
+    onClose: () => setSelected(null),
+    onDelete: handleDelete,
+    searchRef,
+  });
+
+  const selectedPod = pods.find((p) => p.metadata?.name === selected);
 
   const confirmDelete = async () => {
     if (!pendingDelete) return;
@@ -140,6 +162,7 @@ export function PodsPage() {
         <div className="relative">
           <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
+            ref={searchRef}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -168,6 +191,10 @@ export function PodsPage() {
           <option value="Failed">Failed</option>
           <option value="Succeeded">Succeeded</option>
         </select>
+
+        <div className="ml-auto">
+          <RefreshSelect value={refreshInterval} onChange={setRefreshInterval} />
+        </div>
       </div>
 
       {/* Content: table + side panel */}

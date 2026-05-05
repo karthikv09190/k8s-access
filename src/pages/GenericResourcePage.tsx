@@ -1,9 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "../store/app";
 import { ResourceTable, type Column } from "../components/resources/ResourceTable";
 import { ResourceActionsPanel, type ResourceTab } from "../components/resources/ResourceActionsPanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { RefreshSelect } from "../components/ui/RefreshSelect";
+import { useKeyboardNav } from "../hooks/useKeyboardNav";
 import { age } from "../lib/utils";
 import type { InvokeArgs } from "@tauri-apps/api/core";
 import { invoke } from "@tauri-apps/api/core";
@@ -34,6 +36,8 @@ export function GenericResourcePage({
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [pendingDelete, setPendingDelete] = useState<any | null>(null);
+  const [refreshInterval, setRefreshInterval] = useState(30_000);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const queryArgs: Record<string, string | undefined> = {
     context: activeContext,
@@ -44,7 +48,7 @@ export function GenericResourcePage({
     queryKey: [invokeCmd, activeContext, activeNamespace],
     queryFn: () => invoke<unknown[]>(invokeCmd, queryArgs as InvokeArgs),
     enabled: !!activeContext,
-    refetchInterval: 30000,
+    refetchInterval: refreshInterval || false,
   });
 
   const resources = data as any[];
@@ -101,6 +105,16 @@ export function GenericResourcePage({
     setPendingDelete(null);
   };
 
+  useKeyboardNav({
+    items: filtered,
+    selectedKey: selected,
+    getKey: (r) => r.metadata?.uid ?? r.metadata?.name,
+    onSelect: (r) => setSelected(r.metadata?.name),
+    onClose: () => setSelected(null),
+    onDelete: supportsDelete ? handleDelete : undefined,
+    searchRef,
+  });
+
   const selectedResource = resources.find((r) => r.metadata?.name === selected);
 
   return (
@@ -125,6 +139,7 @@ export function GenericResourcePage({
         <div className="flex-1 relative max-w-xs">
           <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
+            ref={searchRef}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -139,6 +154,10 @@ export function GenericResourcePage({
               <X size={11} />
             </button>
           )}
+        </div>
+
+        <div className="ml-auto">
+          <RefreshSelect value={refreshInterval} onChange={setRefreshInterval} />
         </div>
       </div>
 

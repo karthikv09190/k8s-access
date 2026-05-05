@@ -119,6 +119,29 @@ export const compareClusters = (args: {
   resourceKinds: string[];
 }) => invoke<CompareResult>("compare_clusters", args);
 
+// ── Events ────────────────────────────────────────────────────────────────────
+export interface K8sEvent {
+  namespace: string;
+  name: string;
+  eventType: string;
+  reason: string;
+  message: string;
+  objectKind: string;
+  objectName: string;
+  count: number;
+  firstTimestamp: string | null;
+  lastTimestamp: string | null;
+  sourceComponent: string;
+  sourceHost: string;
+}
+
+export const listEvents = (args: {
+  context: string;
+  namespace?: string;
+  involvedObjectKind?: string;
+  involvedObjectName?: string;
+}) => invoke<K8sEvent[]>("list_events", args);
+
 // ── Exec ──────────────────────────────────────────────────────────────────────
 export const execPodCommand = (args: {
   context: string;

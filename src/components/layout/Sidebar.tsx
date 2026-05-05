@@ -1,4 +1,5 @@
 import {
+  Activity,
   Box,
   ChevronDown,
   ChevronRight,
@@ -38,6 +39,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: "Dashboard", icon: <LayoutDashboard size={14} />, page: "dashboard" },
       { label: "Nodes", icon: <Server size={14} />, page: "nodes" },
+      { label: "Events", icon: <Activity size={14} />, page: "events" },
     ],
   },
   {

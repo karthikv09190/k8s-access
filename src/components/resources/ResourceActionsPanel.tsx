@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, FileCode, Pencil, Info, Layers, RotateCcw, Wifi, Play, Network, KeyRound, BarChart2 } from "lucide-react";
+import { X, FileCode, Pencil, Info, Layers, RotateCcw, Wifi, Play, Network, KeyRound, BarChart2, Activity, Copy, Check } from "lucide-react";
 import { YamlPanel } from "./YamlPanel";
 import { EditYamlPanel } from "./EditYamlPanel";
 import { DescribePanel } from "./DescribePanel";
@@ -9,12 +9,14 @@ import { TriggerJobPanel } from "./TriggerJobPanel";
 import { IngressRulesPanel } from "./IngressRulesPanel";
 import { SecretValuesView } from "./SecretValuesPanel";
 import { NodeMetricsPanel, PodMetricsPanel } from "./MetricsPanel";
+import { EventsPanel } from "./EventsPanel";
 import { PortForwardPanel } from "../pods/PortForwardPanel";
 
 export type ResourceTab =
   | "yaml"
   | "edit"
   | "describe"
+  | "events"
   | "scale"
   | "restart"
   | "portforward"
@@ -27,6 +29,7 @@ export type ResourceTab =
 const TAB_CONFIG: Record<ResourceTab, { label: string; icon: React.ElementType }> = {
   yaml:        { label: "YAML",        icon: FileCode },
   edit:        { label: "Edit",        icon: Pencil },
+  events:      { label: "Events",      icon: Activity },
   describe:    { label: "Describe",    icon: Info },
   scale:       { label: "Scale",       icon: Layers },
   restart:     { label: "Restart",     icon: RotateCcw },
@@ -56,9 +59,17 @@ export function ResourceActionsPanel({
   onClose,
 }: Props) {
   const [activeTab, setActiveTab] = useState<ResourceTab>(tabs[0] ?? "yaml");
+  const [copied, setCopied] = useState(false);
 
   const name: string = resource.metadata?.name ?? "";
   const ns: string = namespace ?? resource.metadata?.namespace ?? "";
+
+  const copyName = () => {
+    navigator.clipboard.writeText(name).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    });
+  };
 
   const effectiveTab = tabs.includes(activeTab) ? activeTab : tabs[0];
 
@@ -73,6 +84,13 @@ export function ResourceActionsPanel({
           <p className="font-mono text-xs text-slate-200 truncate">{name}</p>
           {ns && <p className="text-xs text-slate-500 truncate">{ns}</p>}
         </div>
+        <button
+          onClick={copyName}
+          title="Copy name"
+          className="shrink-0 text-slate-500 hover:text-slate-300 p-0.5 rounded hover:bg-slate-800"
+        >
+          {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+        </button>
         <button
           onClick={onClose}
           className="shrink-0 text-slate-500 hover:text-slate-300 p-0.5 rounded hover:bg-slate-800"
@@ -112,6 +130,9 @@ export function ResourceActionsPanel({
         )}
         {effectiveTab === "describe" && (
           <DescribePanel context={context} namespace={ns} kind={kind} name={name} />
+        )}
+        {effectiveTab === "events" && (
+          <EventsPanel context={context} namespace={ns} kind={kind} name={name} />
         )}
         {effectiveTab === "scale" && (
           <ScalePanel
