@@ -32,10 +32,11 @@ use commands::{
     compare::compare_clusters,
     events::list_events,
     exec::{
-        apply_resource_yaml, describe_resource, exec_pod_command, patch_secret, restart_resource,
-        scale_resource, trigger_cronjob,
+        apply_resource_yaml, describe_resource, exec_pod_command, get_rollout_history,
+        get_rollout_status, patch_secret, restart_resource, rollback_rollout, scale_resource,
+        trigger_cronjob,
     },
-    logs::{get_pod_containers, get_pod_logs},
+    logs::{get_pod_containers, get_pod_logs, start_log_stream, stop_log_stream, LogStreamState},
     metrics::{get_cluster_overview, get_node_metrics, get_pod_metrics},
     portforward::{list_port_forwards, start_port_forward, stop_port_forward, PortForwardState},
     resources::{
@@ -44,6 +45,9 @@ use commands::{
         list_jobs, list_nodes, list_pods, list_pvcs, list_pvs, list_replicasets,
         list_rolebindings, list_roles, list_secrets, list_serviceaccounts, list_services,
         list_statefulsets,
+    },
+    terminal::{
+        close_terminal, resize_terminal, start_terminal, write_terminal, TerminalState,
     },
 };
 
@@ -60,6 +64,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(PortForwardState::default())
+        .manage(LogStreamState::default())
+        .manage(TerminalState::default())
         .invoke_handler(tauri::generate_handler![
             // clusters
             check_kubectl,
@@ -90,6 +96,13 @@ pub fn run() {
             // logs
             get_pod_logs,
             get_pod_containers,
+            start_log_stream,
+            stop_log_stream,
+            // terminal
+            start_terminal,
+            write_terminal,
+            resize_terminal,
+            close_terminal,
             // exec / kubectl commands
             exec_pod_command,
             apply_resource_yaml,
@@ -98,6 +111,9 @@ pub fn run() {
             restart_resource,
             trigger_cronjob,
             patch_secret,
+            get_rollout_history,
+            rollback_rollout,
+            get_rollout_status,
             // port forward
             start_port_forward,
             stop_port_forward,

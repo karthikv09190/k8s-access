@@ -111,6 +111,38 @@ export const getPodContainers = (args: {
   podName: string;
 }) => invoke<string[]>("get_pod_containers", args);
 
+export const startLogStream = (args: {
+  context: string;
+  namespace: string;
+  podName: string;
+  container?: string;
+  tailLines?: number;
+}) => invoke<string>("start_log_stream", args);
+
+export const stopLogStream = (streamId: string) =>
+  invoke<void>("stop_log_stream", { streamId });
+
+// ── Terminal ──────────────────────────────────────────────────────────────────
+export const startTerminal = (args: {
+  context: string;
+  namespace: string;
+  podName: string;
+  container?: string;
+  shell?: string;
+}) => invoke<string>("start_terminal", args);
+
+export const writeTerminal = (args: { terminalId: string; data: string }) =>
+  invoke<void>("write_terminal", args);
+
+export const resizeTerminal = (args: {
+  terminalId: string;
+  cols: number;
+  rows: number;
+}) => invoke<void>("resize_terminal", args);
+
+export const closeTerminal = (terminalId: string) =>
+  invoke<void>("close_terminal", { terminalId });
+
 // ── Compare ───────────────────────────────────────────────────────────────────
 export const compareClusters = (args: {
   leftContext: string;
@@ -154,7 +186,36 @@ export const execPodCommand = (args: {
 export const applyResourceYaml = (args: {
   context: string;
   yaml: string;
+  dryRun?: boolean;
 }) => invoke<string>("apply_resource_yaml", args);
+
+// ── Rollout ───────────────────────────────────────────────────────────────────
+export interface RolloutRevision {
+  revision: number;
+  changeCause: string;
+}
+
+export const getRolloutHistory = (args: {
+  context: string;
+  namespace: string;
+  kind: string;
+  name: string;
+}) => invoke<RolloutRevision[]>("get_rollout_history", args);
+
+export const rollbackRollout = (args: {
+  context: string;
+  namespace: string;
+  kind: string;
+  name: string;
+  revision: number;
+}) => invoke<string>("rollback_rollout", args);
+
+export const getRolloutStatus = (args: {
+  context: string;
+  namespace: string;
+  kind: string;
+  name: string;
+}) => invoke<string>("get_rollout_status", args);
 
 export const describeResource = (args: {
   context: string;

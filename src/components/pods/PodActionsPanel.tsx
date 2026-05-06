@@ -2,12 +2,13 @@ import { useState } from "react";
 import { X, ScrollText, Terminal, Wifi, FileCode, Pencil, Activity, Copy, Check } from "lucide-react";
 import { PodLogsPanel } from "../logs/PodLogsPanel";
 import { ExecPanel } from "./ExecPanel";
+import { TerminalPanel } from "./TerminalPanel";
 import { PortForwardPanel } from "./PortForwardPanel";
 import { YamlPanel } from "../resources/YamlPanel";
 import { EditYamlPanel } from "../resources/EditYamlPanel";
 import { EventsPanel } from "../resources/EventsPanel";
 
-type Tab = "logs" | "exec" | "events" | "portforward" | "yaml" | "edit";
+type Tab = "logs" | "terminal" | "exec" | "events" | "portforward" | "yaml" | "edit";
 
 interface Props {
   context: string;
@@ -17,6 +18,7 @@ interface Props {
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "logs", label: "Logs", icon: ScrollText },
+  { id: "terminal", label: "Terminal", icon: Terminal },
   { id: "exec", label: "Exec", icon: Terminal },
   { id: "events", label: "Events", icon: Activity },
   { id: "portforward", label: "Port Fwd", icon: Wifi },
@@ -83,6 +85,9 @@ export function PodActionsPanel({ context, pod, onClose }: Props) {
       <div className="flex-1 overflow-hidden">
         {activeTab === "logs" && (
           <PodLogsPanel context={context} namespace={namespace} podName={podName} />
+        )}
+        {activeTab === "terminal" && (
+          <TerminalPanel context={context} namespace={namespace} podName={podName} />
         )}
         {activeTab === "exec" && (
           <ExecPanel context={context} namespace={namespace} podName={podName} />

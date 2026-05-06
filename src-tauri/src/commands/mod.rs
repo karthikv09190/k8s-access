@@ -6,3 +6,4 @@ pub mod metrics;
 pub mod exec;
 pub mod events;
 pub mod portforward;
+pub mod terminal;

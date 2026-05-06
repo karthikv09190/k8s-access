@@ -45,7 +45,7 @@ function PageRouter({
           title="Deployments"
           kind="Deployment"
           invokeCmd="list_deployments"
-          actionTabs={["yaml", "edit", "describe", "events", "scale", "restart"]}
+          actionTabs={["yaml", "edit", "describe", "events", "scale", "restart", "rollout"]}
           extraColumns={[
             {
               header: "Replicas",
@@ -75,7 +75,7 @@ function PageRouter({
           title="StatefulSets"
           kind="StatefulSet"
           invokeCmd="list_statefulsets"
-          actionTabs={["yaml", "edit", "describe", "events", "scale", "restart"]}
+          actionTabs={["yaml", "edit", "describe", "events", "scale", "restart", "rollout"]}
           extraColumns={[
             {
               header: "Replicas",

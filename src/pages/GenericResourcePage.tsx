@@ -5,12 +5,13 @@ import { ResourceTable, type Column } from "../components/resources/ResourceTabl
 import { ResourceActionsPanel, type ResourceTab } from "../components/resources/ResourceActionsPanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { RefreshSelect } from "../components/ui/RefreshSelect";
+import { CreateResourceModal } from "../components/resources/CreateResourceModal";
 import { useKeyboardNav } from "../hooks/useKeyboardNav";
 import { age } from "../lib/utils";
 import type { InvokeArgs } from "@tauri-apps/api/core";
 import { invoke } from "@tauri-apps/api/core";
 import { deleteResource } from "../lib/tauri";
-import { Search, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 
 interface GenericResourcePageProps {
   title: string;
@@ -37,6 +38,7 @@ export function GenericResourcePage({
   const [search, setSearch] = useState("");
   const [pendingDelete, setPendingDelete] = useState<any | null>(null);
   const [refreshInterval, setRefreshInterval] = useState(30_000);
+  const [showCreate, setShowCreate] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const queryArgs: Record<string, string | undefined> = {
@@ -156,10 +158,26 @@ export function GenericResourcePage({
           )}
         </div>
 
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
           <RefreshSelect value={refreshInterval} onChange={setRefreshInterval} />
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white shrink-0"
+          >
+            <Plus size={11} />
+            Create
+          </button>
         </div>
       </div>
+
+      {showCreate && (
+        <CreateResourceModal
+          context={activeContext}
+          namespace={activeNamespace || "default"}
+          onClose={() => setShowCreate(false)}
+          invalidateKey={invokeCmd}
+        />
+      )}
 
       {/* Content: table + side panel */}
       <div className="flex-1 overflow-hidden flex flex-row">

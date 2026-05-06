@@ -1,6 +1,7 @@
 use crate::kubectl::kubectl_path;
 use k8s_openapi::api::core::v1::Pod;
 use kube::{api::AttachParams, config::KubeConfigOptions, Api, Client};
+use serde::{Deserialize, Serialize};
 use std::process::{Command as StdCommand, Stdio};
 use tokio::io::AsyncReadExt;
 
@@ -66,11 +67,20 @@ pub async fn exec_pod_command(
 }
 
 #[tauri::command]
-pub async fn apply_resource_yaml(context: String, yaml: String) -> Result<String, String> {
+pub async fn apply_resource_yaml(
+    context: String,
+    yaml: String,
+    dry_run: Option<bool>,
+) -> Result<String, String> {
     use std::io::Write;
 
+    let mut args = vec!["apply", "--context", &context, "-f", "-"];
+    if dry_run.unwrap_or(false) {
+        args.push("--dry-run=client");
+    }
+
     let mut child = StdCommand::new(kubectl_path())
-        .args(["apply", "--context", &context, "-f", "-"])
+        .args(&args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -256,4 +266,120 @@ pub async fn patch_secret(
     } else {
         Err(String::from_utf8_lossy(&output.stderr).to_string())
     }
+}
+
+// ── Rollout commands ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RolloutRevision {
+    pub revision: u32,
+    pub change_cause: String,
+}
+
+#[tauri::command]
+pub async fn get_rollout_history(
+    context: String,
+    namespace: String,
+    kind: String,
+    name: String,
+) -> Result<Vec<RolloutRevision>, String> {
+    let resource = format!("{}/{}", kind.to_lowercase(), name);
+
+    let output = StdCommand::new(kubectl_path())
+        .args([
+            "rollout", "history",
+            "--context", &context,
+            "-n", &namespace,
+            &resource,
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    let mut revisions = Vec::new();
+
+    for line in text.lines().skip(2) {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let mut parts = trimmed.splitn(2, char::is_whitespace);
+        if let Some(rev_str) = parts.next() {
+            if let Ok(rev) = rev_str.trim().parse::<u32>() {
+                let change_cause = parts
+                    .next()
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty() && *s != "<none>")
+                    .unwrap_or("<none>")
+                    .to_string();
+                revisions.push(RolloutRevision { revision: rev, change_cause });
+            }
+        }
+    }
+
+    Ok(revisions)
+}
+
+#[tauri::command]
+pub async fn rollback_rollout(
+    context: String,
+    namespace: String,
+    kind: String,
+    name: String,
+    revision: u32,
+) -> Result<String, String> {
+    let resource = format!("{}/{}", kind.to_lowercase(), name);
+    let to_revision = format!("--to-revision={}", revision);
+
+    let output = StdCommand::new(kubectl_path())
+        .args([
+            "rollout", "undo",
+            "--context", &context,
+            "-n", &namespace,
+            &resource,
+            &to_revision,
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn get_rollout_status(
+    context: String,
+    namespace: String,
+    kind: String,
+    name: String,
+) -> Result<String, String> {
+    let resource = format!("{}/{}", kind.to_lowercase(), name);
+
+    let output = StdCommand::new(kubectl_path())
+        .args([
+            "rollout", "status",
+            "--context", &context,
+            "-n", &namespace,
+            &resource,
+            "--timeout=3s",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string()
+        + &String::from_utf8_lossy(&output.stderr))
 }

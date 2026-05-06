@@ -11,6 +11,7 @@ import { SecretValuesView } from "./SecretValuesPanel";
 import { NodeMetricsPanel, PodMetricsPanel } from "./MetricsPanel";
 import { EventsPanel } from "./EventsPanel";
 import { PortForwardPanel } from "../pods/PortForwardPanel";
+import { RolloutPanel } from "./RolloutPanel";
 
 export type ResourceTab =
   | "yaml"
@@ -19,6 +20,7 @@ export type ResourceTab =
   | "events"
   | "scale"
   | "restart"
+  | "rollout"
   | "portforward"
   | "trigger"
   | "rules"
@@ -33,6 +35,7 @@ const TAB_CONFIG: Record<ResourceTab, { label: string; icon: React.ElementType }
   describe:    { label: "Describe",    icon: Info },
   scale:       { label: "Scale",       icon: Layers },
   restart:     { label: "Restart",     icon: RotateCcw },
+  rollout:     { label: "Rollout",     icon: RotateCcw },
   portforward: { label: "Port Fwd",   icon: Wifi },
   trigger:     { label: "Trigger",     icon: Play },
   rules:       { label: "Rules",       icon: Network },
@@ -145,6 +148,9 @@ export function ResourceActionsPanel({
         )}
         {effectiveTab === "restart" && (
           <RestartPanel context={context} namespace={ns} kind={kind} name={name} />
+        )}
+        {effectiveTab === "rollout" && (
+          <RolloutPanel context={context} namespace={ns} kind={kind} name={name} />
         )}
         {effectiveTab === "portforward" && (
           <PortForwardPanel
