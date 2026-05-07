@@ -12,6 +12,7 @@ import { NodeMetricsPanel, PodMetricsPanel } from "./MetricsPanel";
 import { EventsPanel } from "./EventsPanel";
 import { PortForwardPanel } from "../pods/PortForwardPanel";
 import { RolloutPanel } from "./RolloutPanel";
+import { NodeOpsPanel } from "./NodeOpsPanel";
 
 export type ResourceTab =
   | "yaml"
@@ -26,7 +27,8 @@ export type ResourceTab =
   | "rules"
   | "values"
   | "nodemetrics"
-  | "podmetrics";
+  | "podmetrics"
+  | "nodeops";
 
 const TAB_CONFIG: Record<ResourceTab, { label: string; icon: React.ElementType }> = {
   yaml:        { label: "YAML",        icon: FileCode },
@@ -42,6 +44,7 @@ const TAB_CONFIG: Record<ResourceTab, { label: string; icon: React.ElementType }
   values:      { label: "Values",      icon: KeyRound },
   nodemetrics: { label: "Metrics",     icon: BarChart2 },
   podmetrics:  { label: "Pod Metrics", icon: BarChart2 },
+  nodeops:     { label: "Node Ops",    icon: Activity },
 };
 
 interface Props {
@@ -184,6 +187,9 @@ export function ResourceActionsPanel({
         )}
         {effectiveTab === "podmetrics" && (
           <PodMetricsPanel context={context} namespace={ns || undefined} />
+        )}
+        {effectiveTab === "nodeops" && (
+          <NodeOpsPanel context={context} name={name} resource={resource} />
         )}
       </div>
     </div>

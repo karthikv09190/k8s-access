@@ -1,13 +1,16 @@
 use crate::kubectl::kubectl_path;
 use k8s_openapi::api::{
     apps::v1::{DaemonSet, Deployment, ReplicaSet, StatefulSet},
+    autoscaling::v2::HorizontalPodAutoscaler,
     batch::v1::{CronJob, Job},
     core::v1::{
-        ConfigMap, Node, PersistentVolume, PersistentVolumeClaim, Pod, Secret, Service,
-        ServiceAccount,
+        ConfigMap, Endpoints, LimitRange, Node, PersistentVolume, PersistentVolumeClaim,
+        Pod, ResourceQuota, Secret, Service, ServiceAccount,
     },
-    networking::v1::Ingress,
+    networking::v1::{Ingress, NetworkPolicy},
+    policy::v1::PodDisruptionBudget,
     rbac::v1::{ClusterRole, ClusterRoleBinding, Role, RoleBinding},
+    storage::v1::StorageClass,
 };
 use kube::{
     api::{ListParams, ObjectList},
@@ -99,6 +102,15 @@ list_cluster!(list_pvs, PersistentVolume);
 list_cluster!(list_nodes, Node);
 list_cluster!(list_clusterroles, ClusterRole);
 list_cluster!(list_clusterrolebindings, ClusterRoleBinding);
+list_cluster!(list_storageclasses, StorageClass);
+
+// P0 new namespaced resources
+list_namespaced!(list_hpas, HorizontalPodAutoscaler);
+list_namespaced!(list_pdbs, PodDisruptionBudget);
+list_namespaced!(list_networkpolicies, NetworkPolicy);
+list_namespaced!(list_resourcequotas, ResourceQuota);
+list_namespaced!(list_limitranges, LimitRange);
+list_namespaced!(list_endpoints, Endpoints);
 
 #[tauri::command]
 pub async fn get_resource_yaml(
@@ -139,30 +151,33 @@ pub async fn delete_resource(
     kind: String,
     name: String,
 ) -> Result<(), String> {
-    let client = make_client(&context).await?;
-    let ns = namespace.as_deref().unwrap_or("default");
+    use std::process::Stdio;
 
-    match kind.as_str() {
-        "Pod" => {
-            let api: Api<Pod> = Api::namespaced(client, ns);
-            api.delete(&name, &Default::default())
-                .await
-                .map_err(|e| e.to_string())?;
-        }
-        "Deployment" => {
-            let api: Api<Deployment> = Api::namespaced(client, ns);
-            api.delete(&name, &Default::default())
-                .await
-                .map_err(|e| e.to_string())?;
-        }
-        "Service" => {
-            let api: Api<Service> = Api::namespaced(client, ns);
-            api.delete(&name, &Default::default())
-                .await
-                .map_err(|e| e.to_string())?;
-        }
-        _ => return Err(format!("Delete not supported for kind: {}", kind)),
+    let kind_lower = kind.to_lowercase();
+    let mut args = vec![
+        "delete",
+        kind_lower.as_str(),
+        name.as_str(),
+        "--context",
+        context.as_str(),
+    ];
+
+    let ns_owned;
+    if let Some(ref ns) = namespace {
+        ns_owned = ns.clone();
+        args.extend(["-n", ns_owned.as_str()]);
     }
 
-    Ok(())
+    let output = std::process::Command::new(kubectl_path())
+        .args(&args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
 }

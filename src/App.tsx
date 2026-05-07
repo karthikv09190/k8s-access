@@ -375,7 +375,7 @@ function PageRouter({
           kind="Node"
           invokeCmd="list_nodes"
           namespaced={false}
-          actionTabs={["nodemetrics", "yaml", "describe", "events"]}
+          actionTabs={["nodeops", "nodemetrics", "yaml", "describe", "events"]}
           extraColumns={[
             {
               header: "Status",
@@ -443,6 +443,258 @@ function PageRouter({
           kind="ClusterRoleBinding"
           invokeCmd="list_clusterrolebindings"
           namespaced={false}
+        />
+      );
+    case "hpas":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="HorizontalPodAutoscalers"
+          kind="HorizontalPodAutoscaler"
+          invokeCmd="list_hpas"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Target",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400 truncate max-w-[140px] block">
+                  {r.spec?.scaleTargetRef?.kind}/{r.spec?.scaleTargetRef?.name}
+                </span>
+              ),
+            },
+            {
+              header: "Min/Max",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">
+                  {r.spec?.minReplicas ?? 1}/{r.spec?.maxReplicas ?? "?"}
+                </span>
+              ),
+              width: "70px",
+            },
+            {
+              header: "Current",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">
+                  {r.status?.currentReplicas ?? "?"}/{r.status?.desiredReplicas ?? "?"}
+                </span>
+              ),
+              width: "70px",
+            },
+          ]}
+        />
+      );
+    case "pdbs":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="PodDisruptionBudgets"
+          kind="PodDisruptionBudget"
+          invokeCmd="list_pdbs"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Min Available",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">{r.spec?.minAvailable ?? "-"}</span>
+              ),
+              width: "100px",
+            },
+            {
+              header: "Max Unavailable",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">{r.spec?.maxUnavailable ?? "-"}</span>
+              ),
+              width: "120px",
+            },
+            {
+              header: "Disruptions",
+              accessor: (r) => (
+                <span
+                  className={`text-xs font-medium ${
+                    (r.status?.disruptionsAllowed ?? 0) > 0 ? "text-green-400" : "text-amber-400"
+                  }`}
+                >
+                  {r.status?.disruptionsAllowed ?? 0} allowed
+                </span>
+              ),
+              width: "110px",
+            },
+          ]}
+        />
+      );
+    case "networkpolicies":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="NetworkPolicies"
+          kind="NetworkPolicy"
+          invokeCmd="list_networkpolicies"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Pod Selector",
+              accessor: (r) => {
+                const sel = r.spec?.podSelector?.matchLabels ?? {};
+                const entries = Object.entries(sel);
+                return (
+                  <span className="font-mono text-xs text-slate-400 truncate max-w-[160px] block">
+                    {entries.length === 0 ? "all pods" : entries.map(([k, v]) => `${k}=${v}`).join(", ")}
+                  </span>
+                );
+              },
+            },
+            {
+              header: "Policy Types",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">
+                  {(r.spec?.policyTypes ?? []).join(", ") || "-"}
+                </span>
+              ),
+              width: "130px",
+            },
+          ]}
+        />
+      );
+    case "resourcequotas":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="ResourceQuotas"
+          kind="ResourceQuota"
+          invokeCmd="list_resourcequotas"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Used / Hard",
+              accessor: (r) => {
+                const hard = r.status?.hard ?? {};
+                const used = r.status?.used ?? {};
+                const keys = Object.keys(hard).slice(0, 2);
+                return (
+                  <div className="flex flex-col gap-0.5">
+                    {keys.map((k) => (
+                      <span key={k} className="font-mono text-xs text-slate-400 truncate">
+                        {k}: {used[k] ?? "0"}/{hard[k]}
+                      </span>
+                    ))}
+                    {Object.keys(hard).length > 2 && (
+                      <span className="text-xs text-slate-600">+{Object.keys(hard).length - 2} more</span>
+                    )}
+                  </div>
+                );
+              },
+            },
+          ]}
+        />
+      );
+    case "limitranges":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="LimitRanges"
+          kind="LimitRange"
+          invokeCmd="list_limitranges"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Limit Types",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">
+                  {(r.spec?.limits ?? []).map((l: any) => l.type).join(", ") || "-"}
+                </span>
+              ),
+            },
+          ]}
+        />
+      );
+    case "storageclasses":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="StorageClasses"
+          kind="StorageClass"
+          invokeCmd="list_storageclasses"
+          namespaced={false}
+          actionTabs={["yaml", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Provisioner",
+              accessor: (r) => (
+                <span className="font-mono text-xs text-slate-400 truncate max-w-[180px] block">
+                  {r.provisioner ?? "-"}
+                </span>
+              ),
+            },
+            {
+              header: "Reclaim",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">{r.reclaimPolicy ?? "-"}</span>
+              ),
+              width: "90px",
+            },
+            {
+              header: "Default",
+              accessor: (r) => {
+                const isDefault =
+                  r.metadata?.annotations?.["storageclass.kubernetes.io/is-default-class"] === "true";
+                return isDefault ? (
+                  <span className="text-xs text-green-400 font-medium">default</span>
+                ) : (
+                  <span className="text-xs text-slate-600">-</span>
+                );
+              },
+              width: "65px",
+            },
+          ]}
+        />
+      );
+    case "endpoints":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="Endpoints"
+          kind="Endpoints"
+          invokeCmd="list_endpoints"
+          actionTabs={["yaml", "describe", "events"]}
+          extraColumns={[
+            {
+              header: "Addresses",
+              accessor: (r) => {
+                const subsets = r.subsets ?? [];
+                const addrs = subsets.flatMap((s: any) =>
+                  (s.addresses ?? []).map((a: any) => a.ip)
+                );
+                return (
+                  <span className="font-mono text-xs text-slate-400 truncate max-w-[200px] block">
+                    {addrs.length === 0
+                      ? "none"
+                      : addrs.slice(0, 3).join(", ") + (addrs.length > 3 ? ` +${addrs.length - 3}` : "")}
+                  </span>
+                );
+              },
+            },
+            {
+              header: "Ports",
+              accessor: (r) => {
+                const subsets = r.subsets ?? [];
+                const ports = subsets.flatMap((s: any) =>
+                  (s.ports ?? []).map((p: any) => p.port)
+                );
+                return (
+                  <span className="text-xs text-slate-400">
+                    {ports.length === 0 ? "-" : ports.join(", ")}
+                  </span>
+                );
+              },
+              width: "100px",
+            },
+          ]}
         />
       );
     default:

@@ -1,6 +1,19 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getNodeMetrics, getPodMetrics } from "../../lib/tauri";
 import { RefreshCw, Cpu, MemoryStick, AlertCircle } from "lucide-react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const CHART_COLORS = ["#34d399", "#60a5fa", "#f59e0b", "#f87171", "#a78bfa"];
+const HISTORY_LIMIT = 20;
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +60,24 @@ export function NodeMetricsPanel({ context }: NodeMetricsPanelProps) {
     refetchInterval: 30_000,
   });
 
+  type HistoryPoint = Record<string, number | string>;
+  const historyRef = useRef<HistoryPoint[]>([]);
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
+
+  useEffect(() => {
+    if (!data || data.length === 0) return;
+    const point: HistoryPoint = {
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    };
+    data.forEach((n) => {
+      point[n.name + "_cpu"] = parseInt(n.cpuPercent) || 0;
+      point[n.name + "_mem"] = parseInt(n.memoryPercent) || 0;
+    });
+    const next = [...historyRef.current, point].slice(-HISTORY_LIMIT);
+    historyRef.current = next;
+    setHistory([...next]);
+  }, [data]);
+
   return (
     <div className="flex flex-col h-full bg-slate-950">
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-800 bg-slate-900 shrink-0">
@@ -84,17 +115,18 @@ export function NodeMetricsPanel({ context }: NodeMetricsPanelProps) {
           <div className="text-center text-slate-600 text-xs py-10">No node metrics available.</div>
         )}
         {data && data.length > 0 && (
-          <div className="space-y-2">
-            {data.map((node) => {
+          <div className="space-y-3">
+            {data.map((node, i) => {
               const cpuPct = parsePercent(node.cpuPercent);
               const memPct = parsePercent(node.memoryPercent);
+              const color = CHART_COLORS[i % CHART_COLORS.length];
               return (
                 <div key={node.name} className="bg-slate-900 border border-slate-800 rounded-lg p-3 hover:border-slate-700 transition-colors">
                   <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
                     <span className="font-mono text-xs text-slate-200 font-medium">{node.name}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* CPU */}
                     <div>
                       <div className="flex items-center gap-1 mb-1.5">
                         <Cpu size={10} className="text-slate-500" />
@@ -103,7 +135,6 @@ export function NodeMetricsPanel({ context }: NodeMetricsPanelProps) {
                       </div>
                       <Bar value={cpuPct} color={cpuColor(cpuPct)} />
                     </div>
-                    {/* Memory */}
                     <div>
                       <div className="flex items-center gap-1 mb-1.5">
                         <MemoryStick size={10} className="text-slate-500" />
@@ -116,6 +147,65 @@ export function NodeMetricsPanel({ context }: NodeMetricsPanelProps) {
                 </div>
               );
             })}
+
+            {history.length >= 2 && data && (
+              <div className="bg-slate-900 border border-slate-800 rounded-lg p-3">
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold mb-2">
+                  CPU % History
+                </p>
+                <ResponsiveContainer width="100%" height={80}>
+                  <LineChart data={history} margin={{ top: 2, right: 4, left: -28, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="time" hide />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: "#475569" }} />
+                    <Tooltip
+                      contentStyle={{ background: "#0f172a", border: "1px solid #334155", fontSize: 11 }}
+                      labelStyle={{ color: "#94a3b8" }}
+                    />
+                    {data.map((n, i) => (
+                      <Line
+                        key={n.name + "_cpu"}
+                        type="monotone"
+                        dataKey={n.name + "_cpu"}
+                        name={n.name + " CPU%"}
+                        stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                        dot={false}
+                        strokeWidth={1.5}
+                        isAnimationActive={false}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+
+                <p className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold mt-3 mb-2">
+                  Memory % History
+                </p>
+                <ResponsiveContainer width="100%" height={80}>
+                  <LineChart data={history} margin={{ top: 2, right: 4, left: -28, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="time" hide />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: "#475569" }} />
+                    <Tooltip
+                      contentStyle={{ background: "#0f172a", border: "1px solid #334155", fontSize: 11 }}
+                      labelStyle={{ color: "#94a3b8" }}
+                    />
+                    {data.map((n, i) => (
+                      <Line
+                        key={n.name + "_mem"}
+                        type="monotone"
+                        dataKey={n.name + "_mem"}
+                        name={n.name + " Mem%"}
+                        stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                        dot={false}
+                        strokeWidth={1.5}
+                        strokeDasharray="4 2"
+                        isAnimationActive={false}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         )}
       </div>

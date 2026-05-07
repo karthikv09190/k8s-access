@@ -81,6 +81,27 @@ export const listClusterroles = (args: ResourceArgs) =>
 export const listClusterrolebindings = (args: ResourceArgs) =>
   invoke<unknown[]>("list_clusterrolebindings", args);
 
+export const listHpas = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_hpas", args);
+
+export const listPdbs = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_pdbs", args);
+
+export const listNetworkpolicies = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_networkpolicies", args);
+
+export const listResourcequotas = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_resourcequotas", args);
+
+export const listLimitranges = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_limitranges", args);
+
+export const listStorageclasses = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_storageclasses", args);
+
+export const listEndpoints = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_endpoints", args);
+
 export const getResourceYaml = (args: {
   context: string;
   namespace?: string;
@@ -303,3 +324,13 @@ export const getNodeMetrics = (context: string) =>
 
 export const getPodMetrics = (args: { context: string; namespace?: string }) =>
   invoke<PodMetrics[]>("get_pod_metrics", args);
+
+// ── Node Operations ────────────────────────────────────────────────────────────
+export const cordonNode = (args: { context: string; name: string }) =>
+  invoke<string>("cordon_node", args);
+
+export const uncordonNode = (args: { context: string; name: string }) =>
+  invoke<string>("uncordon_node", args);
+
+export const drainNode = (args: { context: string; name: string }) =>
+  invoke<string>("drain_node", args);

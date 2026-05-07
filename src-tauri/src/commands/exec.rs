@@ -383,3 +383,61 @@ pub async fn get_rollout_status(
     Ok(String::from_utf8_lossy(&output.stdout).to_string()
         + &String::from_utf8_lossy(&output.stderr))
 }
+
+// ── Node operations ────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn cordon_node(context: String, name: String) -> Result<String, String> {
+    let output = StdCommand::new(kubectl_path())
+        .args(["cordon", &name, "--context", &context])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn uncordon_node(context: String, name: String) -> Result<String, String> {
+    let output = StdCommand::new(kubectl_path())
+        .args(["uncordon", &name, "--context", &context])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn drain_node(context: String, name: String) -> Result<String, String> {
+    let output = StdCommand::new(kubectl_path())
+        .args([
+            "drain",
+            &name,
+            "--context",
+            &context,
+            "--ignore-daemonsets",
+            "--delete-emptydir-data",
+            "--timeout=120s",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}

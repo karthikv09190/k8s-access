@@ -6,17 +6,24 @@ import {
   Cpu,
   Database,
   FileCode2,
+  Gauge,
   GitCompare,
   Globe,
+  HardDrive,
   Key,
   Layers,
   LayoutDashboard,
   Lock,
   Network,
   Package,
+  Plug,
   Server,
   Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Sliders,
   Timer,
+  TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
 import { useAppStore } from "../../store/app";
@@ -52,6 +59,8 @@ const NAV: NavGroup[] = [
       { label: "ReplicaSets", icon: <Package size={14} />, page: "replicasets" },
       { label: "Jobs", icon: <Timer size={14} />, page: "jobs" },
       { label: "CronJobs", icon: <Timer size={14} />, page: "cronjobs" },
+      { label: "HPAs", icon: <TrendingUp size={14} />, page: "hpas" },
+      { label: "PodDisruptionBudgets", icon: <ShieldAlert size={14} />, page: "pdbs" },
     ],
   },
   {
@@ -59,6 +68,8 @@ const NAV: NavGroup[] = [
     items: [
       { label: "Services", icon: <Network size={14} />, page: "services" },
       { label: "Ingresses", icon: <Globe size={14} />, page: "ingresses" },
+      { label: "NetworkPolicies", icon: <ShieldCheck size={14} />, page: "networkpolicies" },
+      { label: "Endpoints", icon: <Plug size={14} />, page: "endpoints" },
     ],
   },
   {
@@ -68,6 +79,9 @@ const NAV: NavGroup[] = [
       { label: "Secrets", icon: <Key size={14} />, page: "secrets" },
       { label: "PersistentVolumeClaims", icon: <Database size={14} />, page: "pvcs" },
       { label: "PersistentVolumes", icon: <Database size={14} />, page: "pvs" },
+      { label: "StorageClasses", icon: <HardDrive size={14} />, page: "storageclasses" },
+      { label: "ResourceQuotas", icon: <Gauge size={14} />, page: "resourcequotas" },
+      { label: "LimitRanges", icon: <Sliders size={14} />, page: "limitranges" },
     ],
   },
   {
