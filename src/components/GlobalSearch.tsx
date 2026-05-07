@@ -207,11 +207,11 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
       onMouseDown={handleOverlayClick}
     >
       <div
-        className="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden"
+        className="w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center gap-2 px-3 border-b border-slate-800">
+        <div className="flex items-center gap-2 px-3 border-b border-slate-200 dark:border-slate-800">
           {loading ? (
             <Loader2 size={15} className="shrink-0 text-slate-500 animate-spin" />
           ) : (
@@ -224,7 +224,7 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Search pods, deployments, services..."
-            className="w-full bg-transparent px-1 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none"
+            className="w-full bg-transparent px-1 py-3 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-500 outline-none"
           />
         </div>
 
@@ -232,11 +232,11 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
         <div ref={listRef} className="max-h-80 overflow-y-auto">
           {showResults ? (
             loading ? (
-              <div className="px-4 py-6 text-sm text-slate-500 text-center">
+              <div className="px-4 py-6 text-sm text-slate-500 dark:text-slate-500 text-center">
                 Searching...
               </div>
             ) : results.length === 0 ? (
-              <div className="px-4 py-6 text-sm text-slate-500 text-center">
+              <div className="px-4 py-6 text-sm text-slate-500 dark:text-slate-500 text-center">
                 No results for &ldquo;{query}&rdquo;
               </div>
             ) : (
@@ -247,8 +247,8 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
                   onClick={() => onNavigate(r.page)}
                   className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
                     i === selectedIndex
-                      ? "bg-blue-600/20 text-blue-100"
-                      : "text-slate-300 hover:bg-white/5"
+                      ? "bg-blue-100 dark:bg-blue-600/20 text-blue-900 dark:text-blue-100"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5"
                   }`}
                 >
                   <span
@@ -258,7 +258,7 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
                   </span>
                   <span className="flex-1 text-sm font-mono truncate">{r.name}</span>
                   {r.namespace && (
-                    <span className="text-xs text-slate-500 shrink-0">{r.namespace}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-500 shrink-0">{r.namespace}</span>
                   )}
                 </button>
               ))
@@ -266,7 +266,7 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
           ) : (
             /* Pre-search: quick shortcuts */
             <div className="py-2">
-              <div className="px-4 py-1.5 text-[10px] font-semibold text-slate-600 uppercase tracking-wider">
+              <div className="px-4 py-1.5 text-[10px] font-semibold text-slate-500 dark:text-slate-600 uppercase tracking-wider">
                 Quick Navigate
               </div>
               {QUICK_SHORTCUTS.map((s, i) => (
@@ -276,8 +276,8 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
                   onClick={() => onNavigate(s.page)}
                   className={`flex items-center gap-3 w-full px-4 py-2 text-left transition-colors ${
                     i === selectedIndex
-                      ? "bg-blue-600/20 text-blue-100"
-                      : "text-slate-300 hover:bg-white/5"
+                      ? "bg-blue-100 dark:bg-blue-600/20 text-blue-900 dark:text-blue-100"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5"
                   }`}
                 >
                   <span
@@ -293,7 +293,7 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
         </div>
 
         {/* Footer hint */}
-        <div className="px-4 py-2 border-t border-slate-800 text-[11px] text-slate-600 flex gap-4">
+        <div className="px-4 py-2 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-600 flex gap-4">
           <span>↑↓ navigate</span>
           <span>Enter select</span>
           <span>Esc close</span>

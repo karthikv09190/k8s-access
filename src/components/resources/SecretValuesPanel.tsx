@@ -84,16 +84,16 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       {/* ── Header ── */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-800 bg-slate-900 shrink-0">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
         <Lock size={13} className="text-slate-500" />
-        <span className="text-xs font-semibold text-slate-200">Secret Values</span>
-        <span className="text-[11px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">
+        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Secret Values</span>
+        <span className="text-[11px] text-slate-500 bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
           {keys.length} keys
         </span>
         {resource?.type && (
-          <span className="text-[11px] font-mono text-slate-600 ml-0.5">{resource.type}</span>
+          <span className="text-[11px] font-mono text-slate-500 dark:text-slate-600 ml-0.5">{resource.type}</span>
         )}
         {hasChanges && (
           <span className="flex items-center gap-1 text-[11px] text-amber-400 ml-1">
@@ -116,8 +116,8 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
         <div
           className={`px-4 py-2 text-xs border-b flex items-center gap-2 shrink-0 ${
             msg.ok
-              ? "bg-emerald-900/20 border-emerald-800/40 text-emerald-400"
-              : "bg-red-900/20 border-red-800/40 text-red-400"
+              ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-800/40 text-emerald-600 dark:text-emerald-400"
+              : "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-800/40 text-red-600 dark:text-red-400"
           }`}
         >
           {msg.ok ? <Check size={12} /> : <X size={12} />}
@@ -128,7 +128,7 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
       {/* ── Key cards ── */}
       <div className="flex-1 overflow-auto p-3 space-y-2">
         {keys.length === 0 && (
-          <div className="text-center text-slate-600 text-sm py-12">
+          <div className="text-center text-slate-500 dark:text-slate-600 text-sm py-12">
             No data keys in this secret.
           </div>
         )}
@@ -145,13 +145,13 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
               className={`rounded-lg border transition-all ${
                 isEditing
                   ? "border-amber-600/50 bg-amber-900/10"
-                  : "border-slate-800 bg-slate-900 hover:border-slate-700"
+                  : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
               {/* Key name row */}
               <div className="flex items-center gap-2 px-3 py-2">
-                <KeyRound size={11} className="text-slate-600 shrink-0" />
-                <span className="font-mono text-xs text-slate-200 font-medium flex-1 truncate">
+                <KeyRound size={11} className="text-slate-500 dark:text-slate-600 shrink-0" />
+                <span className="font-mono text-xs text-slate-800 dark:text-slate-200 font-medium flex-1 truncate">
                   {key}
                 </span>
                 {isEditing && (
@@ -165,11 +165,11 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
                   {!isEditing && (
                     <button
                       onClick={() => copyValue(key)}
-                      className="p-1.5 rounded text-slate-600 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+                      className="p-1.5 rounded text-slate-500 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300 hover:bg-black/5 dark:hover:bg-slate-800 transition-colors"
                       title="Copy decoded value"
                     >
                       {copied === key ? (
-                        <Check size={11} className="text-emerald-400" />
+                        <Check size={11} className="text-emerald-600 dark:text-emerald-400" />
                       ) : (
                         <Copy size={11} />
                       )}
@@ -178,7 +178,7 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
                   {!isEditing && (
                     <button
                       onClick={() => toggleReveal(key)}
-                      className="p-1.5 rounded text-slate-600 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+                      className="p-1.5 rounded text-slate-500 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300 hover:bg-black/5 dark:hover:bg-slate-800 transition-colors"
                       title={isRevealed ? "Hide value" : "Reveal value"}
                     >
                       {isRevealed ? <EyeOff size={11} /> : <Eye size={11} />}
@@ -187,7 +187,7 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
                   {isEditing ? (
                     <button
                       onClick={() => cancelEdit(key)}
-                      className="p-1.5 rounded text-slate-600 hover:text-red-400 hover:bg-slate-800 transition-colors"
+                      className="p-1.5 rounded text-slate-500 dark:text-slate-600 hover:text-red-600 dark:hover:text-red-400 hover:bg-black/5 dark:hover:bg-slate-800 transition-colors"
                       title="Cancel edit"
                     >
                       <X size={11} />
@@ -195,7 +195,7 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
                   ) : (
                     <button
                       onClick={() => startEdit(key)}
-                      className="p-1.5 rounded text-slate-600 hover:text-blue-400 hover:bg-slate-800 transition-colors"
+                      className="p-1.5 rounded text-slate-500 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-black/5 dark:hover:bg-slate-800 transition-colors"
                       title="Edit value"
                     >
                       <Pencil size={11} />
@@ -215,19 +215,19 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
                     rows={Math.max(3, Math.min(10, lineCount + 1))}
                     spellCheck={false}
                     autoFocus
-                    className="w-full bg-slate-800 border border-slate-600 focus:border-blue-500 text-slate-100 font-mono text-xs rounded-md px-3 py-2 resize-y outline-none leading-relaxed"
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-400 dark:border-slate-600 focus:border-blue-500 text-slate-900 dark:text-slate-100 font-mono text-xs rounded-md px-3 py-2 resize-y outline-none leading-relaxed"
                     placeholder="Enter value (plain text, will be base64-encoded on save)"
                   />
                 ) : isRevealed ? (
-                  <pre className="font-mono text-xs text-slate-300 whitespace-pre-wrap break-all bg-slate-800/50 rounded-md px-3 py-2 leading-relaxed max-h-48 overflow-auto">
+                  <pre className="font-mono text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap break-all bg-white dark:bg-slate-800/50 rounded-md px-3 py-2 leading-relaxed max-h-48 overflow-auto">
                     {decodedVal}
                   </pre>
                 ) : (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/30 rounded-md">
-                    <span className="font-mono text-slate-600 text-sm tracking-[0.15em] select-none">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800/30 rounded-md">
+                    <span className="font-mono text-slate-500 dark:text-slate-600 text-sm tracking-[0.15em] select-none">
                       {"•".repeat(Math.min(32, Math.max(8, decodedVal.length)))}
                     </span>
-                    <span className="text-[10px] text-slate-700 ml-auto">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-700 ml-auto">
                       {decodedVal.length} chars
                     </span>
                   </div>
@@ -238,10 +238,10 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
         })}
 
         {/* ── Add new keys section ── */}
-        <div className="mt-2 rounded-lg border border-dashed border-slate-700 bg-slate-900/40">
+        <div className="mt-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-900/40">
           <button
             onClick={() => setShowAdd((v) => !v)}
-            className="flex items-center gap-2 w-full px-3 py-2.5 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2.5 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors"
           >
             {showAdd ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             <Plus size={11} />
@@ -249,7 +249,7 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
           </button>
 
           {showAdd && (
-            <div className="px-3 pb-3 space-y-2 border-t border-slate-800/60 pt-2">
+            <div className="px-3 pb-3 space-y-2 border-t border-slate-200/60 dark:border-slate-800/60 pt-2">
               {newPairs.map((pair, i) => (
                 <div key={i} className="flex gap-2 items-center">
                   <input
@@ -260,7 +260,7 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
                       )
                     }
                     placeholder="Key name"
-                    className="w-36 shrink-0 bg-slate-800 border border-slate-700 focus:border-blue-500 text-slate-200 text-xs font-mono rounded-md px-2.5 py-1.5 outline-none"
+                    className="w-36 shrink-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-blue-500 text-slate-800 dark:text-slate-200 text-xs font-mono rounded-md px-2.5 py-1.5 outline-none"
                   />
                   <input
                     value={pair.val}
@@ -270,11 +270,11 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
                       )
                     }
                     placeholder="Value (plain text)"
-                    className="flex-1 bg-slate-800 border border-slate-700 focus:border-blue-500 text-slate-200 text-xs font-mono rounded-md px-2.5 py-1.5 outline-none"
+                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-blue-500 text-slate-800 dark:text-slate-200 text-xs font-mono rounded-md px-2.5 py-1.5 outline-none"
                   />
                   <button
                     onClick={() => setNewPairs((p) => p.filter((_, j) => j !== i))}
-                    className="p-1.5 text-slate-600 hover:text-red-400 transition-colors"
+                    className="p-1.5 text-slate-500 dark:text-slate-600 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                   >
                     <X size={11} />
                   </button>
@@ -282,12 +282,12 @@ export function SecretValuesView({ context, namespace, name, resource }: Props) 
               ))}
               <button
                 onClick={() => setNewPairs((p) => [...p, { key: "", val: "" }])}
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors mt-1"
+                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors mt-1"
               >
                 <Plus size={11} />
                 Add pair
               </button>
-              <p className="text-[11px] text-slate-700 mt-2">
+              <p className="text-[11px] text-slate-500 dark:text-slate-700 mt-2">
                 Plain text is base64-encoded automatically on save.
               </p>
             </div>

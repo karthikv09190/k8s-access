@@ -139,7 +139,7 @@ function NavGroupSection({
     <div className="mb-1">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 w-full px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-400"
+        className="flex items-center gap-1 w-full px-3 py-1 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider hover:text-slate-600 dark:hover:text-slate-400"
       >
         {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         {group.label}
@@ -153,8 +153,8 @@ function NavGroupSection({
               className={cn(
                 "flex items-center gap-2 w-full px-4 py-1.5 text-sm rounded-md mx-1 text-left",
                 currentPage === item.page
-                  ? "bg-blue-600/20 text-blue-400 border-l-2 border-blue-500"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                  ? "bg-blue-100 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 border-l-2 border-blue-500"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5"
               )}
             >
               {item.icon}
@@ -173,13 +173,13 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   if (collapsed) return null;
 
   return (
-    <aside className="w-56 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto">
-      <div className="p-3 border-b border-slate-800">
+    <aside className="w-56 shrink-0 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-y-auto">
+      <div className="p-3 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
             K
           </div>
-          <span className="text-sm font-semibold text-slate-100">K8s Manager</span>
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">K8s Manager</span>
         </div>
       </div>
       <nav className="flex-1 py-3 px-1">

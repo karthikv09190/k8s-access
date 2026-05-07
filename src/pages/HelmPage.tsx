@@ -105,12 +105,12 @@ function DetailPanel({
   ];
 
   return (
-    <div className="w-80 shrink-0 border-l border-slate-800 bg-slate-900 flex flex-col overflow-hidden">
+    <div className="w-80 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex flex-col overflow-hidden">
       {/* Panel header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <Package size={14} className="text-blue-400" />
-          <span className="text-sm font-semibold text-slate-200 truncate max-w-[180px]">
+          <Package size={14} className="text-blue-600 dark:text-blue-400" />
+          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[180px]">
             {release.name}
           </span>
         </div>
@@ -127,13 +127,13 @@ function DetailPanel({
         <div className="space-y-2">
           {fields.map(([label, value]) => (
             <div key={label}>
-              <p className="text-[11px] text-slate-600 uppercase tracking-wider mb-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-600 uppercase tracking-wider mb-0.5">
                 {label}
               </p>
               {label === "Status" ? (
                 <StatusBadge status={value} />
               ) : (
-                <p className="text-xs text-slate-300 font-mono break-all">{value}</p>
+                <p className="text-xs text-slate-700 dark:text-slate-300 font-mono break-all">{value}</p>
               )}
             </div>
           ))}
@@ -141,7 +141,7 @@ function DetailPanel({
 
         {/* Raw updated timestamp */}
         <div>
-          <p className="text-[11px] text-slate-600 uppercase tracking-wider mb-0.5">
+          <p className="text-[11px] text-slate-500 dark:text-slate-600 uppercase tracking-wider mb-0.5">
             Updated (raw)
           </p>
           <p className="text-[11px] text-slate-500 font-mono break-all">{release.updated}</p>
@@ -149,7 +149,7 @@ function DetailPanel({
       </div>
 
       {/* Uninstall section */}
-      <div className="shrink-0 border-t border-slate-800 p-4 space-y-2">
+      <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 p-4 space-y-2">
         {confirmStep === 0 && (
           <button
             onClick={() => setConfirmStep(1)}
@@ -174,7 +174,7 @@ function DetailPanel({
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmStep(0)}
-                className="flex-1 px-3 py-1.5 rounded-md border border-slate-700 text-slate-400 text-xs hover:bg-slate-800 transition-colors"
+                className="flex-1 px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 Cancel
               </button>
@@ -301,13 +301,13 @@ export function HelmPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-950">
+    <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-slate-950">
       {/* ── Header ── */}
-      <div className="shrink-0 px-4 py-3 border-b border-slate-800">
+      <div className="shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Package size={15} className="text-blue-400" />
-            <h1 className="text-sm font-semibold text-slate-200">Helm Releases</h1>
+            <Package size={15} className="text-blue-600 dark:text-blue-400" />
+            <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Helm Releases</h1>
             <span className="text-xs text-slate-600">
               {filtered.length}
               {filtered.length !== releases.length && ` / ${releases.length}`}
@@ -326,7 +326,7 @@ export function HelmPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search releases…"
-                className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-md pl-7 pr-7 py-1.5 w-48 focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded-md pl-7 pr-7 py-1.5 w-48 focus:outline-none focus:border-blue-500 placeholder:text-slate-400 dark:placeholder:text-slate-600"
               />
               {search && (
                 <button
@@ -344,7 +344,7 @@ export function HelmPage() {
               <select
                 value={refreshInterval}
                 onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                className="bg-slate-800 border border-slate-700 text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
               >
                 {REFRESH_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -357,7 +357,7 @@ export function HelmPage() {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800 disabled:opacity-40"
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
             >
               <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
               Refresh
@@ -389,7 +389,7 @@ export function HelmPage() {
             </div>
           ) : (
             <table className="w-full text-left">
-              <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-800">
+              <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
                 <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-3 py-2">Name</th>
                   <th className="px-3 py-2">Namespace</th>
@@ -408,10 +408,10 @@ export function HelmPage() {
                     <tr
                       key={`${r.namespace}/${r.name}`}
                       onClick={() => setSelected(isSelected ? null : r)}
-                      className={`group cursor-pointer border-b border-slate-800/50 transition-colors
+                      className={`group cursor-pointer border-b border-slate-200/50 dark:border-slate-800/50 transition-colors
                         ${isSelected
-                          ? "bg-blue-600/10 border-l-2 border-l-blue-500"
-                          : "hover:bg-slate-800/40"
+                          ? "bg-blue-100 dark:bg-blue-600/10 border-l-2 border-l-blue-500"
+                          : "hover:bg-slate-100 dark:hover:bg-slate-800/40"
                         }`}
                     >
                       <td className="px-3 py-2">
@@ -467,7 +467,7 @@ export function HelmPage() {
       </div>
 
       {/* ── Footer ── */}
-      <div className="shrink-0 px-4 py-1.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-600">
+      <div className="shrink-0 px-4 py-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-600">
         <span>
           {filtered.length} release{filtered.length !== 1 ? "s" : ""}
           {filtered.length !== releases.length && ` (${releases.length} total)`}

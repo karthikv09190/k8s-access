@@ -43,16 +43,16 @@ function EventRow({ event }: { event: K8sEvent }) {
     <>
       <div
         onClick={() => setExpanded(!expanded)}
-        className={`group flex items-start gap-2 px-3 py-2 cursor-pointer border-b border-slate-800/50 transition-colors
-          ${isWarning ? "hover:bg-amber-950/20" : "hover:bg-slate-800/40"}
-          ${expanded ? (isWarning ? "bg-amber-950/15" : "bg-slate-800/30") : ""}`}
+        className={`group flex items-start gap-2 px-3 py-2 cursor-pointer border-b border-slate-200/50 dark:border-slate-800/50 transition-colors
+          ${isWarning ? "hover:bg-amber-50 dark:hover:bg-amber-950/20" : "hover:bg-slate-100/40 dark:hover:bg-slate-800/40"}
+          ${expanded ? (isWarning ? "bg-amber-50/80 dark:bg-amber-950/15" : "bg-slate-100/30 dark:bg-slate-800/30") : ""}`}
       >
         {/* Expand chevron */}
         <div className="shrink-0 mt-0.5">
           {expanded ? (
-            <ChevronDown size={11} className="text-slate-600" />
+            <ChevronDown size={11} className="text-slate-500 dark:text-slate-600" />
           ) : (
-            <ChevronRight size={11} className="text-slate-700" />
+            <ChevronRight size={11} className="text-slate-500 dark:text-slate-700" />
           )}
         </div>
 
@@ -69,16 +69,16 @@ function EventRow({ event }: { event: K8sEvent }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className={`text-xs font-medium ${isWarning ? "text-amber-300" : "text-slate-400"}`}
+              className={`text-xs font-medium ${isWarning ? "text-amber-700 dark:text-amber-300" : "text-slate-500 dark:text-slate-400"}`}
             >
               {event.reason}
             </span>
             {event.count > 1 && (
-              <span className="text-[10px] font-mono text-amber-500 bg-amber-500/10 px-1 rounded">
+              <span className="text-[10px] font-mono text-amber-600 dark:text-amber-500 bg-amber-50 dark:bg-amber-500/10 px-1 rounded">
                 ×{event.count}
               </span>
             )}
-            <span className="ml-auto text-[10px] text-slate-600 whitespace-nowrap shrink-0">
+            <span className="ml-auto text-[10px] text-slate-500 dark:text-slate-600 whitespace-nowrap shrink-0">
               {timeAgo(event.lastTimestamp)}
             </span>
           </div>
@@ -91,39 +91,39 @@ function EventRow({ event }: { event: K8sEvent }) {
       {/* Expanded detail */}
       {expanded && (
         <div
-          className={`px-4 py-3 border-b border-slate-800/50 ${
-            isWarning ? "bg-amber-950/10" : "bg-slate-800/20"
+          className={`px-4 py-3 border-b border-slate-200/50 dark:border-slate-800/50 ${
+            isWarning ? "bg-amber-50/50 dark:bg-amber-950/10" : "bg-slate-100/20 dark:bg-slate-800/20"
           }`}
         >
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
             <div className="col-span-2">
-              <span className="text-slate-600 block mb-0.5">Full Message</span>
-              <span className="text-slate-300 break-words whitespace-pre-wrap">
+              <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Full Message</span>
+              <span className="text-slate-700 dark:text-slate-300 break-words whitespace-pre-wrap">
                 {event.message || "-"}
               </span>
             </div>
             <div>
-              <span className="text-slate-600 block mb-0.5">Source</span>
-              <span className="text-slate-400 font-mono text-[11px]">
+              <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Source</span>
+              <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                 {event.sourceComponent || "-"}
                 {event.sourceHost && (
-                  <span className="text-slate-600"> on {event.sourceHost}</span>
+                  <span className="text-slate-500 dark:text-slate-600"> on {event.sourceHost}</span>
                 )}
               </span>
             </div>
             <div>
-              <span className="text-slate-600 block mb-0.5">Object</span>
-              <span className="text-slate-400 font-mono text-[11px]">
+              <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Object</span>
+              <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                 {event.objectKind}/{event.objectName}
               </span>
             </div>
             <div>
-              <span className="text-slate-600 block mb-0.5">First Seen</span>
-              <span className="text-slate-400">{timeAgo(event.firstTimestamp)}</span>
+              <span className="text-slate-500 dark:text-slate-600 block mb-0.5">First Seen</span>
+              <span className="text-slate-500 dark:text-slate-400">{timeAgo(event.firstTimestamp)}</span>
             </div>
             <div>
-              <span className="text-slate-600 block mb-0.5">Last Seen</span>
-              <span className="text-slate-400">{timeAgo(event.lastTimestamp)}</span>
+              <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Last Seen</span>
+              <span className="text-slate-500 dark:text-slate-400">{timeAgo(event.lastTimestamp)}</span>
             </div>
           </div>
         </div>
@@ -183,22 +183,22 @@ export function EventsPanel({ context, namespace, kind, name }: EventsPanelProps
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-3 py-2 border-b border-slate-800 bg-slate-900/30 space-y-2">
+      <div className="shrink-0 px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 space-y-2">
         {/* Top row: title + refresh */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity size={12} className="text-blue-400" />
-            <span className="text-xs font-medium text-slate-300">
+            <Activity size={12} className="text-blue-600 dark:text-blue-400" />
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
               Events for {kind}/{name}
             </span>
             {isFetching && (
-              <RefreshCw size={10} className="animate-spin text-slate-600" />
+              <RefreshCw size={10} className="animate-spin text-slate-500 dark:text-slate-600" />
             )}
           </div>
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="text-slate-500 hover:text-slate-300 p-1 rounded hover:bg-slate-800 disabled:opacity-40 transition-colors"
+            className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 disabled:opacity-40 transition-colors"
           >
             <RefreshCw size={11} />
           </button>
@@ -221,11 +221,11 @@ export function EventsPanel({ context, namespace, kind, name }: EventsPanelProps
                 className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all border ${
                   typeFilter === pill.value
                     ? pill.value === "Warning"
-                      ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                      ? "bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30"
                       : pill.value === "Normal"
-                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                        : "bg-slate-700 text-slate-200 border-slate-600"
-                    : "text-slate-500 border-slate-800 hover:border-slate-700"
+                        ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border-slate-400 dark:border-slate-600"
+                    : "text-slate-500 border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700"
                 }`}
               >
                 {pill.label}{" "}
@@ -236,18 +236,18 @@ export function EventsPanel({ context, namespace, kind, name }: EventsPanelProps
 
           {/* Search */}
           <div className="relative flex-1">
-            <Search size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-600" />
+            <Search size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-600" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter…"
-              className="w-full bg-slate-800 border border-slate-700 text-slate-300 text-[11px] rounded pl-5 pr-5 py-1 focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+              className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] rounded pl-5 pr-5 py-1 focus:outline-none focus:border-blue-500 placeholder:text-slate-500 dark:placeholder:text-slate-600"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-600 hover:text-slate-700 dark:hover:text-slate-400"
               >
                 <X size={10} />
               </button>
@@ -259,12 +259,12 @@ export function EventsPanel({ context, namespace, kind, name }: EventsPanelProps
       {/* Events list */}
       <div className="flex-1 overflow-auto">
         {isLoading ? (
-          <div className="flex items-center justify-center h-32 text-slate-600 text-xs gap-2">
+          <div className="flex items-center justify-center h-32 text-slate-500 dark:text-slate-600 text-xs gap-2">
             <Activity size={14} className="animate-pulse" />
             Loading events…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-slate-600 gap-2">
+          <div className="flex flex-col items-center justify-center h-32 text-slate-500 dark:text-slate-600 gap-2">
             <Activity size={20} className="opacity-30" />
             <span className="text-xs">
               {events.length === 0
@@ -291,7 +291,7 @@ export function EventsPanel({ context, namespace, kind, name }: EventsPanelProps
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 px-3 py-1 border-t border-slate-800 text-[10px] text-slate-600 flex items-center justify-between">
+      <div className="shrink-0 px-3 py-1 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-600 flex items-center justify-between">
         <span>
           {filtered.length} event{filtered.length !== 1 ? "s" : ""}
           {filtered.length !== events.length && ` (${events.length} total)`}

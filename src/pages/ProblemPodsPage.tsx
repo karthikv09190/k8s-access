@@ -376,14 +376,14 @@ export function ProblemPodsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-950">
+    <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-slate-950">
       {/* ── Header ── */}
-      <div className="shrink-0 px-4 py-3 border-b border-slate-800 space-y-3">
+      <div className="shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-800 space-y-3">
         {/* Title row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AlertTriangle size={15} className="text-amber-400" />
-            <h1 className="text-sm font-semibold text-slate-200">Problem Pods</h1>
+            <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400" />
+            <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Problem Pods</h1>
             {isFetching && (
               <RefreshCw size={11} className="animate-spin text-slate-600" />
             )}
@@ -395,7 +395,7 @@ export function ProblemPodsPage() {
               <select
                 value={refreshInterval}
                 onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                className="bg-slate-800 border border-slate-700 text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
               >
                 {REFRESH_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -407,7 +407,7 @@ export function ProblemPodsPage() {
             <button
               onClick={handleRefresh}
               disabled={isFetching}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800 disabled:opacity-40"
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
             >
               <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
               Refresh
@@ -470,7 +470,7 @@ export function ProblemPodsPage() {
       </div>
 
       {/* ── Footer ── */}
-      <div className="shrink-0 px-4 py-1.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-600">
+      <div className="shrink-0 px-4 py-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-600">
         <span>
           {pods.length} pod{pods.length !== 1 ? "s" : ""} scanned ·{" "}
           {nodes.length} node{nodes.length !== 1 ? "s" : ""} checked · all namespaces

@@ -163,30 +163,30 @@ export function KubectlPalette({ open, onClose }: KubectlPaletteProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-2xl rounded-xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden">
+      <div className="w-full max-w-2xl rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700">
-          <Terminal size={16} className="text-slate-400 shrink-0" />
-          <span className="text-sm font-medium text-slate-300">kubectl</span>
-          <span className="ml-auto text-xs text-slate-500">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-300 dark:border-slate-700">
+          <Terminal size={16} className="text-slate-500 dark:text-slate-400 shrink-0" />
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">kubectl</span>
+          <span className="ml-auto text-xs text-slate-500 dark:text-slate-500">
             ↑↓ history · Enter to run · Esc close
           </span>
           <button
             onClick={onClose}
-            className="ml-2 text-slate-500 hover:text-slate-300 transition-colors"
+            className="ml-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
           >
             <X size={14} />
           </button>
         </div>
 
         {/* Preview */}
-        <div className="px-4 py-2 bg-slate-950 border-b border-slate-800">
-          <p className="font-mono text-xs text-slate-500 truncate">{preview}</p>
+        <div className="px-4 py-2 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
+          <p className="font-mono text-xs text-slate-500 dark:text-slate-500 truncate">{preview}</p>
         </div>
 
         {/* Input */}
         <div className="flex items-center px-4 py-3 gap-2">
-          <span className="font-mono text-xs text-slate-500 shrink-0">$</span>
+          <span className="font-mono text-xs text-slate-500 dark:text-slate-500 shrink-0">$</span>
           <input
             ref={inputRef}
             type="text"
@@ -199,7 +199,7 @@ export function KubectlPalette({ open, onClose }: KubectlPaletteProps) {
             onFocus={() => setShowSuggestions(true)}
             onKeyDown={handleKeyDown}
             placeholder="get pods -l app=nginx"
-            className="flex-1 bg-transparent font-mono text-sm text-slate-100 placeholder:text-slate-600 outline-none"
+            className="flex-1 bg-transparent font-mono text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-600 outline-none"
             autoComplete="off"
             spellCheck={false}
           />
@@ -210,7 +210,7 @@ export function KubectlPalette({ open, onClose }: KubectlPaletteProps) {
 
         {/* History suggestions */}
         {showSuggestions && suggestions.length > 0 && !loading && (
-          <div className="border-t border-slate-800 max-h-40 overflow-y-auto">
+          <div className="border-t border-slate-200 dark:border-slate-800 max-h-40 overflow-y-auto">
             {suggestions.slice(0, 10).map((item, idx) => (
               <button
                 key={idx}
@@ -222,8 +222,8 @@ export function KubectlPalette({ open, onClose }: KubectlPaletteProps) {
                 }}
                 className={`w-full text-left px-4 py-1.5 font-mono text-xs truncate transition-colors ${
                   idx === historyIndex
-                    ? "bg-slate-700 text-slate-100"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                    ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-slate-100"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
                 {item}
@@ -234,12 +234,12 @@ export function KubectlPalette({ open, onClose }: KubectlPaletteProps) {
 
         {/* Output */}
         {(output !== null || loading) && (
-          <div className="border-t border-slate-800">
+          <div className="border-t border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between px-4 py-1.5">
-              <span className="text-xs text-slate-500">Output</span>
+              <span className="text-xs text-slate-500 dark:text-slate-500">Output</span>
               <button
                 onClick={() => { setOutput(null); setIsError(false); }}
-                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
               >
                 <Trash2 size={11} />
                 Clear
@@ -250,7 +250,7 @@ export function KubectlPalette({ open, onClose }: KubectlPaletteProps) {
               className="px-4 pb-4 max-h-64 overflow-y-auto"
             >
               {loading ? (
-                <div className="flex items-center gap-2 text-slate-400 text-xs font-mono py-2">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-mono py-2">
                   <Loader2 size={12} className="animate-spin" />
                   Running…
                 </div>

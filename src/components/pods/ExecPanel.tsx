@@ -82,16 +82,16 @@ export function ExecPanel({ context, namespace, podName }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800 bg-slate-900">
-        <Terminal size={12} className="text-slate-400" />
-        <span className="text-xs text-slate-400 font-semibold">EXEC</span>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+        <Terminal size={12} className="text-slate-500 dark:text-slate-400" />
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">EXEC</span>
         {containers.length > 1 && (
           <select
             value={container}
             onChange={(e) => setContainer(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded px-1 py-0.5"
+            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded px-1 py-0.5"
           >
             {(containers as string[]).map((c) => (
               <option key={c} value={c}>
@@ -102,7 +102,7 @@ export function ExecPanel({ context, namespace, podName }: Props) {
         )}
         <button
           onClick={openShell}
-          className="ml-auto text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center gap-1"
+          className="ml-auto text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 flex items-center gap-1"
         >
           <Terminal size={10} />
           Shell info
@@ -110,7 +110,7 @@ export function ExecPanel({ context, namespace, podName }: Props) {
       </div>
 
       {/* Command input */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-800">
         <span className="text-xs text-slate-500 font-mono shrink-0">$</span>
         <input
           type="text"
@@ -118,7 +118,7 @@ export function ExecPanel({ context, namespace, podName }: Props) {
           onChange={(e) => setCommand(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && run()}
           placeholder="Command to run..."
-          className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 text-xs font-mono rounded px-2 py-1 focus:outline-none focus:border-blue-500"
+          className="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-mono rounded px-2 py-1 focus:outline-none focus:border-blue-500"
         />
         <button
           onClick={run}
@@ -132,10 +132,10 @@ export function ExecPanel({ context, namespace, podName }: Props) {
 
       {/* Output */}
       <pre className="flex-1 overflow-auto p-3 text-xs font-mono leading-5 whitespace-pre-wrap break-all">
-        {error && <span className="text-red-400">{error}</span>}
-        {output && <span className="text-green-400">{output}</span>}
+        {error && <span className="text-red-600 dark:text-red-400">{error}</span>}
+        {output && <span className="text-green-600 dark:text-green-400">{output}</span>}
         {!output && !error && !running && (
-          <span className="text-slate-600">
+          <span className="text-slate-500 dark:text-slate-600">
             Type a command above and press Run or Enter.{"\n"}
             Examples: ls -la | cat /etc/hosts | env | ps aux
           </span>

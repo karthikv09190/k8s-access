@@ -88,10 +88,10 @@ function SummaryBar({
             key={label}
             onClick={() => onFilter(isActive ? "all" : status)}
             className={cn(
-              "bg-slate-900 border rounded-lg p-3 text-center transition-all hover:brightness-110",
+              "bg-slate-50 dark:bg-slate-900 border rounded-lg p-3 text-center transition-all hover:brightness-110",
               isActive
                 ? `${activeBorder} ring-1 ring-inset ${activeBorder.replace("border-", "ring-")}`
-                : "border-slate-800"
+                : "border-slate-200 dark:border-slate-800"
             )}
           >
             <div className={`text-2xl font-bold ${color}`}>{val}</div>
@@ -135,7 +135,7 @@ function DiffRow({
       </button>
 
       {expanded && (
-        <div className="border-t border-slate-700/50 grid grid-cols-2 divide-x divide-slate-700/50">
+        <div className="border-t border-slate-300/50 dark:border-slate-700/50 grid grid-cols-2 divide-x divide-slate-300/50 dark:divide-slate-700/50">
           <div className="p-4">
             <div className="text-xs font-semibold text-blue-400 mb-3 uppercase tracking-wider truncate">
               {leftCtx}
@@ -364,13 +364,13 @@ export function ComparePage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-2 border-b border-slate-800 flex items-center gap-2">
-        <GitCompare size={16} className="text-blue-400" />
-        <h2 className="text-sm font-semibold text-slate-200">Compare Clusters</h2>
+      <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+        <GitCompare size={16} className="text-blue-600 dark:text-blue-400" />
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Compare Clusters</h2>
       </div>
 
       {/* Config panel */}
-      <div className="p-4 border-b border-slate-800 bg-slate-900/50 space-y-3">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
         {/* Context pickers */}
         <div className="grid grid-cols-3 gap-4 items-end">
           <div>
@@ -378,7 +378,7 @@ export function ComparePage() {
             <select
               value={leftCtx}
               onChange={(e) => { setLeftCtx(e.target.value); setResult(null); }}
-              className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
               disabled={loading}
             >
               <option value="">Select context...</option>
@@ -399,7 +399,7 @@ export function ComparePage() {
             <select
               value={rightCtx}
               onChange={(e) => { setRightCtx(e.target.value); setResult(null); }}
-              className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
               disabled={loading}
             >
               <option value="">Select context...</option>
@@ -419,7 +419,7 @@ export function ComparePage() {
             <select
               value={namespace}
               onChange={(e) => setNamespace(e.target.value)}
-              className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
               disabled={loading}
             >
               {/* Always show current value + loaded options */}
@@ -445,8 +445,8 @@ export function ComparePage() {
                   className={cn(
                     "text-xs px-2 py-1 rounded border transition-colors disabled:opacity-40",
                     selectedKinds.includes(kind)
-                      ? "bg-blue-600/20 border-blue-600 text-blue-400"
-                      : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
+                      ? "bg-blue-100 dark:bg-blue-600/20 border-blue-600 text-blue-600 dark:text-blue-400"
+                      : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-slate-300"
                   )}
                 >
                   {kind}
@@ -517,7 +517,7 @@ export function ComparePage() {
                   placeholder="Search by name..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded pl-6 pr-6 py-1.5 w-44 focus:outline-none focus:border-blue-500"
+                  className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded pl-6 pr-6 py-1.5 w-44 focus:outline-none focus:border-blue-500"
                 />
                 {search && (
                   <button
@@ -532,7 +532,7 @@ export function ComparePage() {
               <select
                 value={filterKind}
                 onChange={(e) => setFilterKind(e.target.value)}
-                className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded px-2 py-1.5 focus:outline-none focus:border-blue-500"
               >
                 <option value="all">All kinds</option>
                 {selectedKinds.map((k) => (

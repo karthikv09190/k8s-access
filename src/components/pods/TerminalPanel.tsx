@@ -115,12 +115,12 @@ export function TerminalPanel({ context, namespace, podName }: Props) {
 
   return (
     <div className="flex flex-col h-full bg-[#020617]">
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-800 bg-slate-900 shrink-0">
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
         {containers.length > 1 && (
           <select
             value={container}
             onChange={(e) => setContainer(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded px-1 py-0.5"
+            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded px-1 py-0.5"
           >
             {(containers as string[]).map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -130,16 +130,16 @@ export function TerminalPanel({ context, namespace, podName }: Props) {
         <select
           value={shell}
           onChange={(e) => setShell(e.target.value)}
-          className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded px-1 py-0.5"
+          className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded px-1 py-0.5"
         >
           {SHELLS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         {error && (
-          <span className="text-xs text-red-400 truncate flex-1">{error}</span>
+          <span className="text-xs text-red-600 dark:text-red-400 truncate flex-1">{error}</span>
         )}
         <button
           onClick={() => connect()}
-          className="ml-auto text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 shrink-0"
+          className="ml-auto text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 shrink-0"
         >
           Reconnect
         </button>

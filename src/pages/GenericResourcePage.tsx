@@ -131,8 +131,8 @@ export function GenericResourcePage({
         />
       )}
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-800 shrink-0">
-        <h2 className="text-sm font-semibold text-slate-200 shrink-0">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200 shrink-0">
           {title}{" "}
           <span className="text-slate-500 font-normal">
             ({search ? `${filtered.length}/` : ""}{resources.length})
@@ -147,7 +147,7 @@ export function GenericResourcePage({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name..."
-            className="w-full bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded pl-6 pr-6 py-1 focus:outline-none focus:border-blue-500"
+            className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded pl-6 pr-6 py-1 focus:outline-none focus:border-blue-500"
           />
           {search && (
             <button
@@ -205,7 +205,7 @@ export function GenericResourcePage({
 
         {/* Right side panel */}
         {selected && selectedResource && (
-          <div className="w-[440px] shrink-0 border-l border-slate-800 overflow-hidden flex flex-col">
+          <div className="w-[440px] shrink-0 border-l border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
             <ResourceActionsPanel
               context={activeContext}
               namespace={selectedResource.metadata?.namespace}

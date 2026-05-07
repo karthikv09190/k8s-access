@@ -219,7 +219,7 @@ function ContextRow({
               disabled={isCurrent || busy}
               title="Switch to this context"
               className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium
-                bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/30
+                bg-blue-100 dark:bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/30
                 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {busy ? <Loader2 size={10} className="animate-spin" /> : <Wifi size={10} />}
@@ -272,7 +272,7 @@ function ContextRow({
               <button
                 onClick={() => setConfirmDelete(true)}
                 title="Delete context"
-                className="p-1.5 rounded text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                className="p-1.5 rounded text-slate-600 hover:text-red-400 hover:bg-red-50 dark:bg-red-500/10 transition-colors"
               >
                 <Trash2 size={12} />
               </button>
@@ -291,7 +291,7 @@ function ContextRow({
                   ? "bg-slate-800/50 text-slate-400 border-slate-700"
                   : testState.status === "ok"
                   ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
-                  : "bg-red-500/10 text-red-300 border-red-500/20"
+                  : "bg-red-50 dark:bg-red-500/10 text-red-300 border-red-500/20"
                 }`}
             >
               {testState.status === "testing" && (
@@ -368,7 +368,7 @@ function ImportSection({ onRefresh }: { onRefresh: () => void }) {
       </button>
 
       {open && (
-        <div className="px-4 py-3 space-y-3 bg-slate-950 border-t border-slate-800">
+        <div className="px-4 py-3 space-y-3 bg-white dark:bg-slate-950 border-t border-slate-800">
           <p className="text-xs text-slate-500">
             Paste a kubeconfig YAML below. It will be merged into{" "}
             <code className="text-slate-400 font-mono">~/.kube/config</code>.
@@ -418,7 +418,7 @@ function ImportSection({ onRefresh }: { onRefresh: () => void }) {
               className={`flex items-start gap-2 text-xs rounded-md px-3 py-2 border
                 ${result.ok
                   ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
-                  : "bg-red-500/10 text-red-300 border-red-500/20"
+                  : "bg-red-50 dark:bg-red-500/10 text-red-300 border-red-500/20"
                 }`}
             >
               {result.ok ? (
@@ -471,7 +471,7 @@ export function KubeconfigPage() {
   }, [queryClient]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-950">
+    <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-slate-950">
       {/* ── Header ── */}
       <div className="shrink-0 px-4 py-3 border-b border-slate-800">
         <div className="flex items-center justify-between">

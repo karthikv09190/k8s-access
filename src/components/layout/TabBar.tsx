@@ -67,7 +67,7 @@ export function TabBar({
 
   return (
     <div
-      className="flex items-center bg-slate-900 border-b border-slate-800 shrink-0"
+      className="flex items-center bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0"
       style={{ height: "36px" }}
     >
       <div className="flex items-center flex-1 overflow-x-auto min-w-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -78,8 +78,8 @@ export function TabBar({
               key={tab.id}
               className={`group flex items-center gap-1.5 px-3 py-1.5 text-xs whitespace-nowrap cursor-pointer select-none shrink-0 border-b-2 transition-colors ${
                 isActive
-                  ? "bg-blue-600/20 text-blue-400 border-blue-500"
-                  : "text-slate-400 border-transparent hover:text-slate-200 hover:bg-white/5"
+                  ? "bg-blue-100 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 border-blue-500"
+                  : "text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-900 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5"
               }`}
               onClick={() => onSelectTab(tab.id)}
             >
@@ -102,7 +102,7 @@ export function TabBar({
       </div>
       {canAdd && (
         <button
-          className="flex items-center justify-center w-8 h-full text-slate-500 hover:text-slate-200 hover:bg-white/5 transition-colors shrink-0"
+          className="flex items-center justify-center w-8 h-full text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0"
           onClick={onNewTab}
           aria-label="New tab"
         >

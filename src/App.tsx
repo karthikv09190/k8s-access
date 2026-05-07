@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useAppStore } from "./store/app";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar } from "./components/layout/TopBar";
 import { TabBar, PAGE_TITLES } from "./components/layout/TabBar";
@@ -22,6 +23,10 @@ import { StatusBadge } from "./components/resources/ResourceTable";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { checkKubectl, KubectlStatus } from "./lib/tauri";
 import { AlertTriangle, X, Terminal } from "lucide-react";
+
+// Apply initial theme before first render to avoid flash
+const _t = localStorage.getItem('k8s-theme') ?? 'dark';
+if (_t === 'dark') document.documentElement.classList.add('dark');
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -783,6 +788,16 @@ function StartupBanner() {
 }
 
 export default function App() {
+  const theme = useAppStore((s) => s.theme);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
   const [tabs, setTabs] = useState<Tab[]>([
     { id: "tab-1", page: "dashboard", title: "Dashboard" },
   ]);

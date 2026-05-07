@@ -78,7 +78,7 @@ export function ExportMenu({
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button className="flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 shrink-0 border border-slate-600">
+        <button className="flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 shrink-0 border border-slate-400 dark:border-slate-600">
           Export
           <ChevronDown size={10} />
         </button>
@@ -86,26 +86,26 @@ export function ExportMenu({
 
       <DropdownMenu.Portal>
         <DropdownMenu.Content
-          className="z-50 min-w-[160px] rounded bg-slate-800 border border-slate-700 shadow-xl py-1 text-xs text-slate-200"
+          className="z-50 min-w-[160px] rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl py-1 text-xs text-slate-800 dark:text-slate-200"
           sideOffset={4}
           align="end"
         >
           <DropdownMenu.Item
-            className="px-3 py-1.5 cursor-pointer hover:bg-slate-700 focus:bg-slate-700 outline-none"
+            className="px-3 py-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 focus:bg-slate-100 dark:focus:bg-slate-700 outline-none"
             onSelect={handleJSON}
           >
             JSON
           </DropdownMenu.Item>
 
           <DropdownMenu.Item
-            className="px-3 py-1.5 cursor-pointer hover:bg-slate-700 focus:bg-slate-700 outline-none"
+            className="px-3 py-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 focus:bg-slate-100 dark:focus:bg-slate-700 outline-none"
             onSelect={handleCSV}
           >
             CSV
           </DropdownMenu.Item>
 
           <DropdownMenu.Item
-            className="px-3 py-1.5 cursor-pointer hover:bg-slate-700 focus:bg-slate-700 outline-none"
+            className="px-3 py-1.5 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 focus:bg-slate-100 dark:focus:bg-slate-700 outline-none"
             onSelect={handleMarkdownCopy}
           >
             Markdown (copy)
@@ -113,7 +113,7 @@ export function ExportMenu({
 
           {showYamlBundle && (
             <>
-              <DropdownMenu.Separator className="my-1 border-t border-slate-700" />
+              <DropdownMenu.Separator className="my-1 border-t border-slate-200 dark:border-slate-700" />
               <DropdownMenu.Item
                 className="px-3 py-1.5 cursor-pointer hover:bg-slate-700 focus:bg-slate-700 outline-none flex items-center gap-2"
                 onSelect={handleYamlBundle}

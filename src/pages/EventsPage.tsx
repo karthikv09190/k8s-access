@@ -85,9 +85,9 @@ function EventRow({
     <>
       <tr
         onClick={() => setExpanded(!expanded)}
-        className={`group cursor-pointer border-b border-slate-800/50 transition-colors
-          ${event.eventType === "Warning" ? "hover:bg-amber-950/20" : "hover:bg-slate-800/40"}
-          ${expanded ? (event.eventType === "Warning" ? "bg-amber-950/15" : "bg-slate-800/30") : ""}`}
+        className={`group cursor-pointer border-b border-slate-200/50 dark:border-slate-800/50 transition-colors
+          ${event.eventType === "Warning" ? "hover:bg-amber-950/20" : "hover:bg-slate-100 dark:hover:bg-slate-800/40"}
+          ${expanded ? (event.eventType === "Warning" ? "bg-amber-950/15" : "bg-slate-100 dark:bg-slate-800/30") : ""}`}
       >
         {/* Expand icon */}
         <td className="pl-3 pr-1 py-2 w-6">
@@ -114,7 +114,7 @@ function EventRow({
 
         {/* Object */}
         <td className="px-2 py-2">
-          <span className="text-xs text-slate-300">
+          <span className="text-xs text-slate-700 dark:text-slate-300">
             <span className="text-slate-500">{event.objectKind}/</span>
             {event.objectName}
           </span>
@@ -122,7 +122,7 @@ function EventRow({
 
         {/* Reason */}
         <td className="px-2 py-2">
-          <span className={`text-xs font-medium ${event.eventType === "Warning" ? "text-amber-300" : "text-slate-400"}`}>
+          <span className={`text-xs font-medium ${event.eventType === "Warning" ? "text-amber-700 dark:text-amber-300" : "text-slate-500 dark:text-slate-400"}`}>
             {event.reason}
           </span>
         </td>
@@ -137,7 +137,7 @@ function EventRow({
         {/* Count */}
         <td className="px-2 py-2 text-center w-16">
           <span
-            className={`text-xs font-mono ${event.count > 1 ? "text-amber-400 font-semibold" : "text-slate-600"}`}
+            className={`text-xs font-mono ${event.count > 1 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-slate-500 dark:text-slate-600"}`}
           >
             {event.count}
           </span>
@@ -153,41 +153,41 @@ function EventRow({
 
       {/* Expanded detail */}
       {expanded && (
-        <tr className={event.eventType === "Warning" ? "bg-amber-950/10" : "bg-slate-800/20"}>
+        <tr className={event.eventType === "Warning" ? "bg-amber-950/10" : "bg-slate-100/50 dark:bg-slate-800/20"}>
           <td colSpan={showNamespace ? 8 : 7} className="px-4 py-3">
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
               <div>
-                <span className="text-slate-600 block mb-0.5">Full Message</span>
-                <span className="text-slate-300 break-words whitespace-pre-wrap">
+                <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Full Message</span>
+                <span className="text-slate-700 dark:text-slate-300 break-words whitespace-pre-wrap">
                   {event.message || "-"}
                 </span>
               </div>
               <div className="space-y-2">
                 <div>
-                  <span className="text-slate-600 block mb-0.5">Source</span>
-                  <span className="text-slate-400 font-mono">
+                  <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Source</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-mono">
                     {event.sourceComponent || "-"}
                     {event.sourceHost && (
-                      <span className="text-slate-600"> on {event.sourceHost}</span>
+                      <span className="text-slate-500 dark:text-slate-600"> on {event.sourceHost}</span>
                     )}
                   </span>
                 </div>
                 <div className="flex gap-6">
                   <div>
-                    <span className="text-slate-600 block mb-0.5">First Seen</span>
-                    <span className="text-slate-400">{timeAgo(event.firstTimestamp)}</span>
+                    <span className="text-slate-500 dark:text-slate-600 block mb-0.5">First Seen</span>
+                    <span className="text-slate-500 dark:text-slate-400">{timeAgo(event.firstTimestamp)}</span>
                   </div>
                   <div>
-                    <span className="text-slate-600 block mb-0.5">Last Seen</span>
-                    <span className="text-slate-400">{timeAgo(event.lastTimestamp)}</span>
+                    <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Last Seen</span>
+                    <span className="text-slate-500 dark:text-slate-400">{timeAgo(event.lastTimestamp)}</span>
                   </div>
                   <div>
-                    <span className="text-slate-600 block mb-0.5">Count</span>
-                    <span className="text-slate-400">{event.count}</span>
+                    <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Count</span>
+                    <span className="text-slate-500 dark:text-slate-400">{event.count}</span>
                   </div>
                 </div>
                 <div>
-                  <span className="text-slate-600 block mb-0.5">Event Name</span>
+                  <span className="text-slate-500 dark:text-slate-600 block mb-0.5">Event Name</span>
                   <span className="text-slate-500 font-mono text-[11px] break-all">
                     {event.name}
                   </span>
@@ -302,14 +302,14 @@ export function EventsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-950">
+    <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-slate-950">
       {/* ── Header ── */}
-      <div className="shrink-0 px-4 py-3 border-b border-slate-800 space-y-3">
+      <div className="shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-800 space-y-3">
         {/* Title row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity size={15} className="text-blue-400" />
-            <h1 className="text-sm font-semibold text-slate-200">Events</h1>
+            <Activity size={15} className="text-blue-600 dark:text-blue-400" />
+            <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Events</h1>
             {isFetching && (
               <RefreshCw size={11} className="animate-spin text-slate-600" />
             )}
@@ -321,7 +321,7 @@ export function EventsPage() {
               <select
                 value={refreshInterval}
                 onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                className="bg-slate-800 border border-slate-700 text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
               >
                 {REFRESH_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -333,7 +333,7 @@ export function EventsPage() {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800 disabled:opacity-40"
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
             >
               <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
               Refresh
@@ -351,7 +351,7 @@ export function EventsPage() {
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-            className="bg-slate-800 border border-slate-700 text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
+            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
           >
             {TIME_RANGE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -366,7 +366,7 @@ export function EventsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search events…"
-              className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-md pl-7 pr-7 py-1.5 w-56 focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded-md pl-7 pr-7 py-1.5 w-56 focus:outline-none focus:border-blue-500 placeholder:text-slate-400 dark:placeholder:text-slate-600"
             />
             {search && (
               <button
@@ -401,7 +401,7 @@ export function EventsPage() {
           </div>
         ) : (
           <table className="w-full text-left">
-            <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-800">
+            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
               <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 <th className="pl-3 pr-1 py-2 w-6" />
                 <th className="px-2 py-2 w-24">Type</th>
@@ -427,7 +427,7 @@ export function EventsPage() {
       </div>
 
       {/* ── Footer ── */}
-      <div className="shrink-0 px-4 py-1.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-600">
+      <div className="shrink-0 px-4 py-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-600">
         <span>
           {filtered.length} event{filtered.length !== 1 ? "s" : ""}
           {filtered.length !== events.length && ` (${events.length} total)`}

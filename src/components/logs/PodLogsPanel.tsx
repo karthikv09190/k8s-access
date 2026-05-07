@@ -107,16 +107,16 @@ export function PodLogsPanel({ context, namespace, podName }: Props) {
     : lines;
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-800 bg-slate-900 flex-wrap">
-        <span className="text-xs text-slate-400 font-semibold shrink-0">LOGS</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex-wrap">
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold shrink-0">LOGS</span>
 
         {containers.length > 1 && (
           <select
             value={container}
             onChange={(e) => setContainer(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded px-1 py-0.5"
+            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded px-1 py-0.5"
           >
             {(containers as string[]).map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -127,7 +127,7 @@ export function PodLogsPanel({ context, namespace, podName }: Props) {
         <select
           value={tailLines}
           onChange={(e) => setTailLines(Number(e.target.value))}
-          className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded px-1 py-0.5"
+          className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded px-1 py-0.5"
         >
           {[50, 100, 200, 500, 1000].map((n) => (
             <option key={n} value={n}>Last {n}</option>
@@ -138,8 +138,8 @@ export function PodLogsPanel({ context, namespace, podName }: Props) {
           onClick={() => setFollow((f) => !f)}
           className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded border transition-colors ${
             follow
-              ? "bg-green-500/15 border-green-500/30 text-green-400"
-              : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-300"
+              ? "bg-green-50 dark:bg-green-500/15 border-green-500/30 text-green-600 dark:text-green-400"
+              : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300"
           }`}
         >
           {follow && <Loader2 size={10} className="animate-spin" />}
@@ -149,28 +149,28 @@ export function PodLogsPanel({ context, namespace, podName }: Props) {
         {follow && (
           <button
             onClick={() => setPaused((p) => !p)}
-            className="flex items-center gap-1 text-xs px-2 py-0.5 rounded border border-slate-700 text-slate-400 hover:text-slate-300 bg-slate-800"
+            className="flex items-center gap-1 text-xs px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300 bg-white dark:bg-slate-800"
           >
             {paused ? <Play size={10} /> : <Pause size={10} />}
             {paused ? "Resume" : "Pause"}
           </button>
         )}
 
-        <span className="text-xs text-slate-600">{lines.length} lines</span>
+        <span className="text-xs text-slate-500 dark:text-slate-600">{lines.length} lines</span>
 
         <div className="relative ml-auto">
-          <Search size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-600" />
+          <Search size={10} className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-600" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search…"
-            className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded pl-5 pr-5 py-0.5 w-32 focus:outline-none focus:border-blue-500"
+            className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded pl-5 pr-5 py-0.5 w-32 focus:outline-none focus:border-blue-500"
           />
           {search && (
             <button
               onClick={() => setSearch("")}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-600"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-600"
             >
               <X size={10} />
             </button>
@@ -180,7 +180,7 @@ export function PodLogsPanel({ context, namespace, podName }: Props) {
         <button
           onClick={download}
           title="Download log"
-          className="text-slate-500 hover:text-slate-300 p-1 rounded hover:bg-slate-800"
+          className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 p-1 rounded hover:bg-black/5 dark:hover:bg-slate-800"
         >
           <Download size={12} />
         </button>
@@ -191,10 +191,10 @@ export function PodLogsPanel({ context, namespace, podName }: Props) {
         <pre
           ref={logRef}
           onScroll={handleScroll}
-          className="h-full overflow-auto p-3 text-xs font-mono text-green-400 leading-5 whitespace-pre-wrap break-all"
+          className="h-full overflow-auto p-3 text-xs font-mono text-green-600 dark:text-green-400 leading-5 whitespace-pre-wrap break-all"
         >
           {displayed.length === 0 ? (
-            <span className="text-slate-600">Waiting for logs…</span>
+            <span className="text-slate-500 dark:text-slate-600">Waiting for logs…</span>
           ) : (
             displayed.map((line, i) => {
               const isMatch =

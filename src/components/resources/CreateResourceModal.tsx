@@ -117,13 +117,13 @@ export function CreateResourceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-[820px] max-h-[90vh] bg-slate-900 border border-slate-700 rounded-lg shadow-2xl flex flex-col">
+      <div className="w-[820px] max-h-[90vh] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
-          <h2 className="text-sm font-semibold text-slate-200">Create Resource</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-300 dark:border-slate-700 shrink-0">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Create Resource</h2>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-slate-300 p-1 rounded hover:bg-slate-800"
+            className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
           >
             <X size={14} />
           </button>
@@ -131,7 +131,7 @@ export function CreateResourceModal({
 
         <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Template sidebar */}
-          <div className="w-36 shrink-0 border-r border-slate-700 py-2 overflow-y-auto">
+          <div className="w-36 shrink-0 border-r border-slate-300 dark:border-slate-700 py-2 overflow-y-auto">
             <p className="px-3 py-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
               Templates
             </p>
@@ -145,8 +145,8 @@ export function CreateResourceModal({
                 }}
                 className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
                   activeTemplate === t
-                    ? "text-blue-400 bg-blue-500/10"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                    ? "text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/10"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5"
                 }`}
               >
                 {t}
@@ -173,11 +173,11 @@ export function CreateResourceModal({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-t border-slate-700">
+        <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-t border-slate-300 dark:border-slate-700">
           {result && (
             <div
               className={`flex items-center gap-1.5 text-xs flex-1 min-w-0 ${
-                result.ok ? "text-green-400" : "text-red-400"
+                result.ok ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
               }`}
             >
               {result.ok ? (
@@ -189,7 +189,7 @@ export function CreateResourceModal({
             </div>
           )}
           <div className="ml-auto flex items-center gap-2 shrink-0">
-            <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={dryRun}
@@ -200,7 +200,7 @@ export function CreateResourceModal({
             </label>
             <button
               onClick={onClose}
-              className="text-xs px-3 py-1.5 rounded border border-slate-700 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              className="text-xs px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800"
             >
               Cancel
             </button>

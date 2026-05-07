@@ -32,13 +32,13 @@ function timeAgo(dateStr: string | null | undefined): string {
 function ScopeBadge({ scope }: { scope: string }) {
   if (scope === "Namespaced") {
     return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-900/40 text-blue-300 border border-blue-700/30">
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 border border-blue-300 dark:border-blue-700/30">
         Namespaced
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700 text-slate-300 border border-slate-600/30">
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-600/30">
       Cluster
     </span>
   );
@@ -67,20 +67,20 @@ function ResourceDetailPanel({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-y-0 right-0 w-[480px] bg-slate-900 border-l border-slate-700 flex flex-col z-50 shadow-xl">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
-        <span className="text-sm font-semibold text-slate-200">
+    <div className="fixed inset-y-0 right-0 w-[480px] bg-slate-50 dark:bg-slate-900 border-l border-slate-300 dark:border-slate-700 flex flex-col z-50 shadow-xl">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-300 dark:border-slate-700 shrink-0">
+        <span className="text-sm font-semibold text-slate-900 dark:text-slate-200">
           {(item as { metadata?: { name?: string } }).metadata?.name ?? "Resource"}
         </span>
         <button
           onClick={onClose}
-          className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors"
+          className="p-1 rounded hover:bg-white dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors"
         >
           <X size={14} />
         </button>
       </div>
       <div className="flex-1 overflow-auto p-4">
-        <pre className="text-[11px] text-slate-300 font-mono whitespace-pre-wrap break-words leading-relaxed">
+        <pre className="text-[11px] text-slate-700 dark:text-slate-300 font-mono whitespace-pre-wrap break-words leading-relaxed">
           {JSON.stringify(item, null, 2)}
         </pre>
       </div>
@@ -135,7 +135,7 @@ function CrdList({
   return (
     <div className="flex flex-col h-full">
       {/* Search */}
-      <div className="p-2 border-b border-slate-800 shrink-0">
+      <div className="p-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
         <div className="relative">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-600" />
           <input
@@ -143,12 +143,12 @@ function CrdList({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter by kind or group…"
-            className="w-full bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded-md pl-7 pr-7 py-1.5 focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+            className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded-md pl-7 pr-7 py-1.5 focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
           />
           {search && (
             <button
               onClick={() => setSearch("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-600 dark:hover:text-slate-400"
             >
               <X size={11} />
             </button>
@@ -170,12 +170,12 @@ function CrdList({
                 {/* Group header */}
                 <button
                   onClick={() => toggleGroup(group)}
-                  className="w-full flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800/60 transition-colors border-b border-slate-800/60 text-left"
+                  className="w-full flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-900 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition-colors border-b border-slate-200/60 dark:border-slate-800/60 text-left"
                 >
                   {collapsed ? (
-                    <ChevronRight size={11} className="text-slate-600 shrink-0" />
+                    <ChevronRight size={11} className="text-slate-500 dark:text-slate-600 shrink-0" />
                   ) : (
-                    <ChevronDown size={11} className="text-slate-600 shrink-0" />
+                    <ChevronDown size={11} className="text-slate-500 dark:text-slate-600 shrink-0" />
                   )}
                   <span className="text-[11px] font-semibold text-slate-500 truncate flex-1">
                     {group}
@@ -193,10 +193,10 @@ function CrdList({
                       <button
                         key={crd.name}
                         onClick={() => onSelect(crd)}
-                        className={`w-full flex items-start gap-2 px-3 py-2 text-left border-b border-slate-800/40 transition-colors ${
+                        className={`w-full flex items-start gap-2 px-3 py-2 text-left border-b border-slate-200/40 dark:border-slate-800/40 transition-colors ${
                           isSelected
-                            ? "bg-blue-600/20 border-l-2 border-l-blue-500"
-                            : "hover:bg-slate-800/50 border-l-2 border-l-transparent"
+                            ? "bg-blue-100 dark:bg-blue-600/20 border-l-2 border-l-blue-500"
+                            : "hover:bg-slate-200/50 dark:hover:bg-slate-800/50 border-l-2 border-l-transparent"
                         }`}
                       >
                         <EstablishedDot established={crd.established} />
@@ -204,7 +204,7 @@ function CrdList({
                           <div className="flex items-center gap-1.5">
                             <span
                               className={`text-xs font-medium truncate ${
-                                isSelected ? "text-blue-300" : "text-slate-300"
+                                isSelected ? "text-blue-600 dark:text-blue-300" : "text-slate-700 dark:text-slate-300"
                               }`}
                             >
                               {crd.kind}
@@ -274,9 +274,9 @@ function ResourcesPanel({
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Panel header */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-2 border-b border-slate-800">
+      <div className="shrink-0 flex items-center justify-between px-4 py-2 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-200">{crd.kind}</span>
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-200">{crd.kind}</span>
           <ScopeBadge scope={crd.scope} />
           <span className="text-[10px] text-slate-600 font-mono">{crd.group}</span>
           {crd.versions.length > 0 && (
@@ -292,7 +292,7 @@ function ResourcesPanel({
           <button
             onClick={() => refetch()}
             disabled={isFetching}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800 disabled:opacity-40"
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-40"
           >
             <RefreshCw size={11} className={isFetching ? "animate-spin" : ""} />
           </button>
@@ -322,7 +322,7 @@ function ResourcesPanel({
       ) : (
         <div className="flex-1 overflow-auto">
           <table className="w-full text-left">
-            <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-800">
+            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
               <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 <th className="px-3 py-2">Name</th>
                 {showNamespace && <th className="px-3 py-2">Namespace</th>}

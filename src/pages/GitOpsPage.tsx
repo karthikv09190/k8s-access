@@ -113,10 +113,10 @@ function SidePanel({
   refreshing: boolean;
 }) {
   return (
-    <div className="w-80 shrink-0 border-l border-slate-800 bg-slate-900/60 flex flex-col overflow-hidden">
+    <div className="w-80 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex flex-col overflow-hidden">
       {/* header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-        <span className="text-sm font-semibold text-slate-200 font-mono truncate">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 font-mono truncate">
           {app.name}
         </span>
         <button
@@ -186,7 +186,7 @@ function SidePanel({
       </div>
 
       {/* footer — refresh button */}
-      <div className="shrink-0 px-4 py-3 border-t border-slate-800">
+      <div className="shrink-0 px-4 py-3 border-t border-slate-200 dark:border-slate-800">
         <button
           onClick={onRefresh}
           disabled={refreshing}
@@ -237,8 +237,8 @@ function AppRow({
   return (
     <tr
       onClick={onSelect}
-      className={`group cursor-pointer border-b border-slate-800/50 transition-colors
-        ${selected ? "bg-blue-950/30" : "hover:bg-slate-800/40"}`}
+      className={`group cursor-pointer border-b border-slate-200/50 dark:border-slate-800/50 transition-colors
+        ${selected ? "bg-blue-50 dark:bg-blue-950/30" : "hover:bg-slate-100 dark:hover:bg-slate-800/40"}`}
     >
       {/* Name */}
       <td className="px-3 py-2">
@@ -371,14 +371,14 @@ export function GitOpsPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-950">
+    <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-slate-950">
       {/* ── Header ── */}
-      <div className="shrink-0 px-4 py-3 border-b border-slate-800 space-y-3">
+      <div className="shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-800 space-y-3">
         {/* Title row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <GitBranch size={15} className="text-purple-400" />
-            <h1 className="text-sm font-semibold text-slate-200">
+            <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               GitOps (ArgoCD)
             </h1>
             {isFetching && (
@@ -397,7 +397,7 @@ export function GitOpsPage() {
               <select
                 value={refreshInterval}
                 onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                className="bg-slate-800 border border-slate-700 text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
+                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[11px] rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500"
               >
                 {REFRESH_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -409,7 +409,7 @@ export function GitOpsPage() {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800 disabled:opacity-40"
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
             >
               <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
               Refresh
@@ -453,7 +453,7 @@ export function GitOpsPage() {
             </div>
           ) : (
             <table className="w-full text-left">
-              <thead className="sticky top-0 z-10 bg-slate-900 border-b border-slate-800">
+              <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
                 <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-3 py-2">Name</th>
                   <th className="px-2 py-2">Project</th>
@@ -512,7 +512,7 @@ export function GitOpsPage() {
       </div>
 
       {/* ── Footer ── */}
-      <div className="shrink-0 px-4 py-1.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-600">
+      <div className="shrink-0 px-4 py-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-600">
         <span>
           {apps.length} application{apps.length !== 1 ? "s" : ""}
         </span>

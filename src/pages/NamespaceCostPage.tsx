@@ -180,38 +180,38 @@ function CostSettingsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-80 p-5 flex flex-col gap-4">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl w-80 p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Settings size={14} className="text-emerald-400" />
-            <span className="text-sm font-semibold text-slate-200">Cost Rate Settings</span>
+            <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">Cost Rate Settings</span>
           </div>
-          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 transition-colors p-1 rounded hover:bg-slate-800">
+          <button onClick={onClose} className="text-slate-500 dark:text-slate-600 hover:text-slate-900 dark:hover:text-slate-300 transition-colors p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800">
             <X size={14} />
           </button>
         </div>
 
         <div className="space-y-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-slate-400 font-medium">CPU Rate ($/core-hour)</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">CPU Rate ($/core-hour)</span>
             <input
               type="number"
               step="0.0001"
               min="0"
               value={cpu}
               onChange={(e) => setCpu(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-slate-400 font-medium">Memory Rate ($/GiB-hour)</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Memory Rate ($/GiB-hour)</span>
             <input
               type="number"
               step="0.00001"
               min="0"
               value={mem}
               onChange={(e) => setMem(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+              className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
             />
           </label>
         </div>
@@ -254,15 +254,15 @@ function SummaryCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 flex flex-col gap-1.5 min-w-0">
+    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 flex flex-col gap-1.5 min-w-0">
       <div className="flex items-center gap-2 text-slate-500 text-xs font-medium uppercase tracking-wide">
         {icon}
         {label}
       </div>
-      <div className="text-slate-100 text-xl font-semibold font-mono truncate">
+      <div className="text-slate-900 dark:text-slate-100 text-xl font-semibold font-mono truncate">
         {value}
       </div>
-      {sub && <div className="text-slate-600 text-[11px]">{sub}</div>}
+      {sub && <div className="text-slate-500 dark:text-slate-600 text-[11px]">{sub}</div>}
     </div>
   );
 }
@@ -271,7 +271,7 @@ function SummaryCard({
 
 function PodRow({ pod }: { pod: PodCost }) {
   return (
-    <tr className="border-b border-slate-800/30 hover:bg-slate-800/20">
+    <tr className="border-b border-slate-200/30 dark:border-slate-800/30 hover:bg-black/3 dark:hover:bg-white/3">
       <td className="pl-10 pr-2 py-1.5 text-xs text-slate-400 font-mono">
         {pod.name}
       </td>
@@ -311,8 +311,8 @@ function NsRow({
     <>
       <tr
         onClick={() => setExpanded(!expanded)}
-        className={`group cursor-pointer border-b border-slate-800/50 transition-colors hover:bg-slate-800/40
-          ${expanded ? "bg-slate-800/30" : ""}
+        className={`group cursor-pointer border-b border-slate-200/50 dark:border-slate-800/50 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/40
+          ${expanded ? "bg-slate-100 dark:bg-slate-800/30" : ""}
           ${dimmed ? "opacity-40" : ""}`}
       >
         <td className="pl-3 pr-1 py-2.5 w-6">
@@ -380,8 +380,8 @@ function ChartTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs shadow-lg">
-      <div className="text-slate-300 font-mono mb-1">{label}</div>
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-3 py-2 text-xs shadow-lg">
+      <div className="text-slate-700 dark:text-slate-300 font-mono mb-1">{label}</div>
       <div className="text-emerald-400 font-semibold">{formatMonthlyCost(payload[0].value)}</div>
     </div>
   );
@@ -472,7 +472,7 @@ export function NamespaceCostPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-950">
+    <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-slate-950">
       {showSettings && (
         <CostSettingsModal
           rates={rates}
@@ -482,24 +482,24 @@ export function NamespaceCostPage() {
       )}
 
       {/* ── Header ── */}
-      <div className="shrink-0 px-4 py-3 border-b border-slate-800">
+      <div className="shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <DollarSign size={15} className="text-emerald-400" />
-            <h1 className="text-sm font-semibold text-slate-200">
+            <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               Cost Estimation
             </h1>
             {isFetching && (
               <RefreshCw size={11} className="animate-spin text-slate-600" />
             )}
-            <span className="ml-1 px-1.5 py-0.5 rounded text-[11px] font-mono bg-slate-800 text-slate-400 border border-slate-700">
+            <span className="ml-1 px-1.5 py-0.5 rounded text-[11px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
               {activeContext}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSettings(true)}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800"
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <Settings size={12} />
               Settings
@@ -507,7 +507,7 @@ export function NamespaceCostPage() {
             <button
               onClick={() => refetch()}
               disabled={isFetching}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800 disabled:opacity-40"
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
             >
               <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
               Refresh
@@ -564,8 +564,8 @@ export function NamespaceCostPage() {
 
         {/* ── Bar chart ── */}
         {chartData.length > 0 && (
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
-            <div className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wide">
+          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
+            <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3 uppercase tracking-wide">
               Top {chartData.length} Namespaces by Monthly Cost
             </div>
             <ResponsiveContainer width="100%" height={220}>
@@ -599,7 +599,7 @@ export function NamespaceCostPage() {
         )}
 
         {/* ── Namespace table ── */}
-        <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
           {nsData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-600 gap-3">
               <Server size={28} className="opacity-30" />
@@ -607,7 +607,7 @@ export function NamespaceCostPage() {
             </div>
           ) : (
             <table className="w-full text-left">
-              <thead className="bg-slate-900 border-b border-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
                 <tr className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="pl-3 pr-1 py-2.5 w-6" />
                   <th className="px-2 py-2.5">Namespace</th>
@@ -629,7 +629,7 @@ export function NamespaceCostPage() {
               {/* ── Total row ── */}
               {nsData.length > 0 && (
                 <tfoot>
-                  <tr className="border-t-2 border-slate-700 bg-slate-900/80">
+                  <tr className="border-t-2 border-slate-300 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80">
                     <td />
                     <td className="px-2 py-2.5">
                       <span className="text-xs font-semibold text-slate-400">Total</span>
@@ -660,7 +660,7 @@ export function NamespaceCostPage() {
       </div>
 
       {/* ── Footer ── */}
-      <div className="shrink-0 px-4 py-1.5 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-600">
+      <div className="shrink-0 px-4 py-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-600">
         <span>
           {nsData.length} namespace{nsData.length !== 1 ? "s" : ""} ·{" "}
           {rawPods.length} pod{rawPods.length !== 1 ? "s" : ""}
