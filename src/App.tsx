@@ -7,7 +7,11 @@ import { PodsPage } from "./pages/PodsPage";
 import { ComparePage } from "./pages/ComparePage";
 import { EventsPage } from "./pages/EventsPage";
 import { GenericResourcePage } from "./pages/GenericResourcePage";
+import { ProblemPodsPage } from "./pages/ProblemPodsPage";
+import { RbacVisualizerPage } from "./pages/RbacVisualizerPage";
+import { HelmPage } from "./pages/HelmPage";
 import { StatusBadge } from "./components/resources/ResourceTable";
+import { GlobalSearch } from "./components/GlobalSearch";
 import { checkKubectl, KubectlStatus } from "./lib/tauri";
 import { AlertTriangle, X, Terminal } from "lucide-react";
 
@@ -38,6 +42,8 @@ function PageRouter({
       return <ComparePage key={onRefreshKey} />;
     case "events":
       return <EventsPage key={onRefreshKey} />;
+    case "problemPods":
+      return <ProblemPodsPage key={onRefreshKey} />;
     case "deployments":
       return (
         <GenericResourcePage
@@ -445,6 +451,8 @@ function PageRouter({
           namespaced={false}
         />
       );
+    case "rbac":
+      return <RbacVisualizerPage key={onRefreshKey} />;
     case "hpas":
       return (
         <GenericResourcePage
@@ -697,6 +705,8 @@ function PageRouter({
           ]}
         />
       );
+    case "helm":
+      return <HelmPage key={onRefreshKey} />;
     default:
       return (
         <div className="flex items-center justify-center h-full text-slate-500 text-sm">
@@ -755,13 +765,14 @@ function StartupBanner() {
 export default function App() {
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
 
-  // Global Cmd+K — wired to global search (Phase 2)
+  // Global Cmd+K — opens GlobalSearch
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        // TODO Phase 2: open GlobalSearch
+        setSearchOpen(true);
       }
     };
     window.addEventListener("keydown", handler);
@@ -780,6 +791,15 @@ export default function App() {
           </main>
         </div>
       </div>
+      {searchOpen && (
+        <GlobalSearch
+          onClose={() => setSearchOpen(false)}
+          onNavigate={(page) => {
+            setCurrentPage(page);
+            setSearchOpen(false);
+          }}
+        />
+      )}
     </QueryClientProvider>
   );
 }

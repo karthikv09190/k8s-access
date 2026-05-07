@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   Box,
   ChevronDown,
   ChevronRight,
@@ -24,6 +25,7 @@ import {
   Sliders,
   Timer,
   TrendingUp,
+  Eye,
 } from "lucide-react";
 import { useState } from "react";
 import { useAppStore } from "../../store/app";
@@ -47,6 +49,7 @@ const NAV: NavGroup[] = [
       { label: "Dashboard", icon: <LayoutDashboard size={14} />, page: "dashboard" },
       { label: "Nodes", icon: <Server size={14} />, page: "nodes" },
       { label: "Events", icon: <Activity size={14} />, page: "events" },
+      { label: "Problem Pods", icon: <AlertTriangle size={14} />, page: "problemPods" },
     ],
   },
   {
@@ -87,6 +90,7 @@ const NAV: NavGroup[] = [
   {
     label: "RBAC",
     items: [
+      { label: "RBAC Visualizer", icon: <Eye size={14} />, page: "rbac" },
       { label: "ServiceAccounts", icon: <Shield size={14} />, page: "serviceaccounts" },
       { label: "Roles", icon: <Lock size={14} />, page: "roles" },
       { label: "RoleBindings", icon: <Lock size={14} />, page: "rolebindings" },
@@ -98,6 +102,7 @@ const NAV: NavGroup[] = [
     label: "Tools",
     items: [
       { label: "Compare Clusters", icon: <GitCompare size={14} />, page: "compare" },
+      { label: "Helm Releases", icon: <Package size={14} />, page: "helm" },
     ],
   },
 ];

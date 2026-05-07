@@ -7,3 +7,4 @@ pub mod exec;
 pub mod events;
 pub mod portforward;
 pub mod terminal;
+pub mod helm;

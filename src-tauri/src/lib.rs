@@ -31,6 +31,7 @@ use commands::{
     clusters::{check_kubectl, list_contexts, list_namespaces},
     compare::compare_clusters,
     events::list_events,
+    helm::{list_helm_releases, uninstall_helm_release},
     exec::{
         apply_resource_yaml, cordon_node, describe_resource, drain_node, exec_pod_command,
         get_rollout_history, get_rollout_status, patch_secret, restart_resource, rollback_rollout,
@@ -133,6 +134,9 @@ pub fn run() {
             compare_clusters,
             // events
             list_events,
+            // helm
+            list_helm_releases,
+            uninstall_helm_release,
             // metrics
             get_cluster_overview,
             get_node_metrics,

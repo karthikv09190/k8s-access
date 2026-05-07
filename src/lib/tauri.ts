@@ -334,3 +334,23 @@ export const uncordonNode = (args: { context: string; name: string }) =>
 
 export const drainNode = (args: { context: string; name: string }) =>
   invoke<string>("drain_node", args);
+
+// ── Helm ───────────────────────────────────────────────────────────────────────
+export interface HelmRelease {
+  name: string;
+  namespace: string;
+  revision: string;
+  updated: string;
+  status: string;
+  chart: string;
+  appVersion: string;
+}
+
+export const listHelmReleases = (context: string) =>
+  invoke<HelmRelease[]>("list_helm_releases", { context });
+
+export const uninstallHelmRelease = (args: {
+  context: string;
+  namespace: string;
+  name: string;
+}) => invoke<string>("uninstall_helm_release", args);
