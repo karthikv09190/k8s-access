@@ -1,10 +1,25 @@
-import { Menu, RefreshCw } from "lucide-react";
-import { useEffect } from "react";
+import { Menu, RefreshCw, Terminal } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../store/app";
 import { listContexts, listNamespaces } from "../../lib/tauri";
+import { NotificationCenter } from "./NotificationCenter";
+import { KubectlPalette } from "../KubectlPalette";
 
 export function TopBar({ onRefresh }: { onRefresh: () => void }) {
+  const [kubectlOpen, setKubectlOpen] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "P") {
+        e.preventDefault();
+        setKubectlOpen((o) => !o);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const {
     contexts,
     setContexts,
@@ -88,12 +103,21 @@ export function TopBar({ onRefresh }: { onRefresh: () => void }) {
       <div className="flex-1" />
 
       <button
+        onClick={() => setKubectlOpen(true)}
+        className="text-slate-400 hover:text-slate-200 p-1 rounded"
+        title="kubectl Palette (⌘⇧P)"
+      >
+        <Terminal size={14} />
+      </button>
+      <NotificationCenter />
+      <button
         onClick={onRefresh}
         className="text-slate-400 hover:text-slate-200 p-1 rounded"
         title="Refresh"
       >
         <RefreshCw size={14} />
       </button>
+      <KubectlPalette open={kubectlOpen} onClose={() => setKubectlOpen(false)} />
     </header>
   );
 }

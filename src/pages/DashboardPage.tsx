@@ -1,13 +1,153 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../store/app";
-import { getClusterOverview, getNodeMetrics } from "../lib/tauri";
+import { getClusterOverview, getNodeMetrics, listPods } from "../lib/tauri";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import {
   Server, Box, Layers, Network, Globe, Clock, AlertTriangle,
-  Cpu, MemoryStick, ChevronRight, RefreshCw, Activity,
+  Cpu, MemoryStick, ChevronRight, RefreshCw, Activity, DollarSign,
 } from "lucide-react";
+
+// ── Cost helpers (mirrored from NamespaceCostPage) ────────────────────────────
+
+const COST_RATES_KEY = "k8s-cost-rates";
+const DEFAULT_CPU_RATE = 0.0464;
+const DEFAULT_MEM_RATE = 0.00623;
+
+function getDashboardRates() {
+  try {
+    const stored = localStorage.getItem(COST_RATES_KEY);
+    if (stored) return { ...{ cpu: DEFAULT_CPU_RATE, mem: DEFAULT_MEM_RATE }, ...JSON.parse(stored) };
+  } catch { /* ignore */ }
+  return { cpuPerCoreHour: DEFAULT_CPU_RATE, memPerGiBHour: DEFAULT_MEM_RATE };
+}
+
+function parseCpuDash(s: string | undefined | null): number {
+  if (!s) return 0;
+  if (s.endsWith("m")) return parseInt(s) / 1000;
+  return parseFloat(s);
+}
+
+function parseMemDash(s: string | undefined | null): number {
+  if (!s) return 0;
+  if (s.endsWith("Ki")) return parseInt(s) / (1024 * 1024);
+  if (s.endsWith("Mi")) return parseInt(s) / 1024;
+  if (s.endsWith("Gi")) return parseFloat(s);
+  if (s.endsWith("Ti")) return parseFloat(s) * 1024;
+  return parseInt(s) / (1024 * 1024 * 1024);
+}
+
+interface NsCostSummary {
+  namespace: string;
+  hourlyRate: number;
+}
+
+function computeTopNamespaceCosts(rawPods: unknown[]): NsCostSummary[] {
+  const rates = getDashboardRates();
+  const cpuRate = (rates as { cpuPerCoreHour?: number }).cpuPerCoreHour ?? DEFAULT_CPU_RATE;
+  const memRate = (rates as { memPerGiBHour?: number }).memPerGiBHour ?? DEFAULT_MEM_RATE;
+
+  const byNs = new Map<string, { cpu: number; mem: number }>();
+
+  for (const p of rawPods) {
+    const pod = p as Record<string, unknown>;
+    const meta = (pod.metadata ?? {}) as Record<string, unknown>;
+    const spec = (pod.spec ?? {}) as Record<string, unknown>;
+    const ns = (meta.namespace as string) ?? "default";
+    const containers = (spec.containers as unknown[]) ?? [];
+
+    let cpu = 0; let mem = 0;
+    for (const c of containers) {
+      const container = c as Record<string, unknown>;
+      const resources = (container.resources ?? {}) as Record<string, unknown>;
+      const requests = (resources.requests ?? {}) as Record<string, string>;
+      cpu += parseCpuDash(requests.cpu);
+      mem += parseMemDash(requests.memory);
+    }
+
+    const prev = byNs.get(ns) ?? { cpu: 0, mem: 0 };
+    byNs.set(ns, { cpu: prev.cpu + cpu, mem: prev.mem + mem });
+  }
+
+  const results: NsCostSummary[] = [];
+  for (const [namespace, { cpu, mem }] of byNs.entries()) {
+    const hourlyRate = cpu * cpuRate + mem * memRate;
+    if (hourlyRate > 0) results.push({ namespace, hourlyRate });
+  }
+
+  results.sort((a, b) => b.hourlyRate - a.hourlyRate);
+  return results.slice(0, 3);
+}
+
+// ── Top Namespace Costs Widget ────────────────────────────────────────────────
+
+function TopNamespaceCostsCard({ onNavigate }: { onNavigate: (page: string) => void }) {
+  const { activeContext } = useAppStore();
+
+  const { data: rawPods } = useQuery({
+    queryKey: ["dashboard-cost-pods", activeContext],
+    queryFn: () => listPods({ context: activeContext }),
+    enabled: !!activeContext,
+    staleTime: 60_000,
+  });
+
+  const topNs = useMemo(
+    () => (rawPods ? computeTopNamespaceCosts(rawPods) : null),
+    [rawPods]
+  );
+
+  const maxRate = topNs && topNs.length > 0 ? topNs[0].hourlyRate : 1;
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          <DollarSign size={11} className="text-emerald-400" />
+          Top Namespace Costs
+        </div>
+        <button
+          onClick={() => onNavigate("namespaceCost")}
+          className="ml-auto text-[11px] text-slate-600 hover:text-blue-400 flex items-center gap-1 transition-colors"
+        >
+          View All <ChevronRight size={11} />
+        </button>
+      </div>
+
+      {!topNs ? (
+        <div className="flex flex-col items-center justify-center h-20 text-slate-700 text-xs gap-1.5">
+          <DollarSign size={18} className="opacity-30" />
+          <span>No metrics data</span>
+        </div>
+      ) : topNs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-20 text-slate-700 text-xs gap-1.5">
+          <DollarSign size={18} className="opacity-30" />
+          <span>No resource requests found</span>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {topNs.map((ns) => (
+            <div key={ns.namespace}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-mono text-xs text-slate-300 truncate flex-1 mr-2">{ns.namespace}</span>
+                <span className="font-mono text-xs text-emerald-400 shrink-0">
+                  ${ns.hourlyRate.toFixed(2)}/hr
+                </span>
+              </div>
+              <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500/70 rounded-full"
+                  style={{ width: `${Math.min(100, (ns.hourlyRate / maxRate) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -175,8 +315,8 @@ export function DashboardPage({ onNavigate }: Props) {
           />
         </div>
 
-        {/* ── Bottom row: chart + node metrics ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* ── Bottom row: chart + node metrics + cost widget ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           {/* Pod distribution chart */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -279,6 +419,9 @@ export function DashboardPage({ onNavigate }: Props) {
               </div>
             )}
           </div>
+
+          {/* Top Namespace Costs */}
+          <TopNamespaceCostsCard onNavigate={onNavigate} />
         </div>
 
         {/* ── Quick navigation ── */}

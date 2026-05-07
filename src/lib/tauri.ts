@@ -394,3 +394,24 @@ export const testContextConnection = (context: string) =>
   invoke<string>("test_context_connection", { context });
 export const importKubeconfig = (yamlContent: string) =>
   invoke<string[]>("import_kubeconfig", { yamlContent });
+
+// ── Watch / Alerts ────────────────────────────────────────────────────────────
+export const startClusterWatch = (context: string) =>
+  invoke<void>("start_cluster_watch", { context });
+export const stopClusterWatch = (context: string) =>
+  invoke<void>("stop_cluster_watch", { context });
+export const clearClusterAlerts = () =>
+  invoke<void>("clear_cluster_alerts");
+
+// ── kubectl Command Palette ───────────────────────────────────────────────────
+export const runKubectlCommand = (args: {
+  context: string;
+  namespace: string;
+  args: string[];
+}) => invoke<string>("run_kubectl_command", args);
+
+// ── Export ────────────────────────────────────────────────────────────────────
+export const getNamespaceYamlBundle = (args: {
+  context: string;
+  namespace: string;
+}) => invoke<string>("get_namespace_yaml_bundle", args);

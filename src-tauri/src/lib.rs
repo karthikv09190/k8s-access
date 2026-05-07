@@ -58,6 +58,9 @@ use commands::{
     terminal::{
         close_terminal, resize_terminal, start_terminal, write_terminal, TerminalState,
     },
+    watch::{clear_cluster_alerts, start_cluster_watch, stop_cluster_watch, WatchState},
+    kubectl_cmd::run_kubectl_command,
+    export::get_namespace_yaml_bundle,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -75,6 +78,7 @@ pub fn run() {
         .manage(PortForwardState::default())
         .manage(LogStreamState::default())
         .manage(TerminalState::default())
+        .manage(WatchState::default())
         .invoke_handler(tauri::generate_handler![
             // clusters
             check_kubectl,
@@ -157,6 +161,14 @@ pub fn run() {
             // webhooks
             list_mutatingwebhookconfigurations,
             list_validatingwebhookconfigurations,
+            // watch / alerts
+            start_cluster_watch,
+            stop_cluster_watch,
+            clear_cluster_alerts,
+            // kubectl command palette
+            run_kubectl_command,
+            // export
+            get_namespace_yaml_bundle,
             // kubeconfig management
             rename_context,
             delete_context,

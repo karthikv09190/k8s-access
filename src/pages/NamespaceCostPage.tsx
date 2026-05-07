@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../store/app";
 import { listPods, listNodes } from "../lib/tauri";
@@ -12,6 +12,9 @@ import {
   Cpu,
   MemoryStick,
   Layers,
+  Settings,
+  X,
+  RotateCcw,
 } from "lucide-react";
 import {
   BarChart,
@@ -24,9 +27,23 @@ import {
 
 // ── Cost constants ────────────────────────────────────────────────────────────
 
-const CPU_COST_PER_HOUR = 0.0464; // $ per vCPU/hour (EKS ap-northeast-1, m5.xlarge equivalent)
-const MEM_COST_PER_HOUR = 0.00623; // $ per GiB/hour
+const DEFAULT_CPU_RATE = 0.0464; // $ per vCPU/hour (EKS ap-northeast-1, m5.xlarge equivalent)
+const DEFAULT_MEM_RATE = 0.00623; // $ per GiB/hour
 const HOURS_PER_MONTH = 730;
+const COST_RATES_KEY = "k8s-cost-rates";
+
+// ── Cost rates hook ───────────────────────────────────────────────────────────
+
+interface CostRates {
+  cpuPerCoreHour: number;
+  memPerGiBHour: number;
+}
+
+function useCostRates() {
+  const defaults: CostRates = { cpuPerCoreHour: DEFAULT_CPU_RATE, memPerGiBHour: DEFAULT_MEM_RATE };
+  const stored = localStorage.getItem(COST_RATES_KEY);
+  return stored ? { ...defaults, ...JSON.parse(stored) } : defaults;
+}
 
 // ── Parsing helpers ───────────────────────────────────────────────────────────
 
@@ -45,14 +62,18 @@ function parseMemory(s: string | undefined | null): number {
   return parseInt(s) / (1024 * 1024 * 1024);
 }
 
-function monthlyCost(cpu: number, mem: number): number {
-  return (cpu * CPU_COST_PER_HOUR + mem * MEM_COST_PER_HOUR) * HOURS_PER_MONTH;
+function monthlyCostWithRates(cpu: number, mem: number, rates: CostRates): number {
+  return (cpu * rates.cpuPerCoreHour + mem * rates.memPerGiBHour) * HOURS_PER_MONTH;
 }
 
-function formatCost(dollars: number): string {
-  if (dollars < 1) return `$${(dollars * 100).toFixed(1)}¢/mo`;
-  return `$${dollars.toFixed(2)}/mo`;
+function hourlyCostWithRates(cpu: number, mem: number, rates: CostRates): number {
+  return cpu * rates.cpuPerCoreHour + mem * rates.memPerGiBHour;
 }
+
+function formatMonthlyCost(dollars: number): string {
+  return `$${dollars.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo`;
+}
+
 
 function formatCpu(cores: number): string {
   if (cores === 0) return "-";
@@ -74,6 +95,7 @@ interface PodCost {
   cpu: number;
   mem: number;
   cost: number;
+  monthlyCostAmt: number;
   hasRequests: boolean;
 }
 
@@ -83,12 +105,14 @@ interface NsCost {
   cpu: number;
   mem: number;
   cost: number;
+  monthlyCostAmt: number;
+  hourlyRate: number;
   hasAnyRequests: boolean;
 }
 
 // ── Pod parsing ───────────────────────────────────────────────────────────────
 
-function parsePods(raw: unknown[]): PodCost[] {
+function parsePods(raw: unknown[], rates: CostRates): PodCost[] {
   return raw.map((p) => {
     const pod = p as Record<string, unknown>;
     const meta = (pod.metadata ?? {}) as Record<string, unknown>;
@@ -112,15 +136,108 @@ function parsePods(raw: unknown[]): PodCost[] {
       totalMem += parseMemory(requests.memory);
     }
 
+    const monthlyCostAmt = monthlyCostWithRates(totalCpu, totalMem, rates);
     return {
       name,
       namespace,
       cpu: totalCpu,
       mem: totalMem,
-      cost: monthlyCost(totalCpu, totalMem),
+      cost: monthlyCostAmt,
+      monthlyCostAmt,
       hasRequests,
     };
   });
+}
+
+// ── Cost Settings Modal ───────────────────────────────────────────────────────
+
+function CostSettingsModal({
+  rates,
+  onApply,
+  onClose,
+}: {
+  rates: CostRates;
+  onApply: (r: CostRates) => void;
+  onClose: () => void;
+}) {
+  const [cpu, setCpu] = useState(String(rates.cpuPerCoreHour));
+  const [mem, setMem] = useState(String(rates.memPerGiBHour));
+
+  const handleApply = () => {
+    const parsed: CostRates = {
+      cpuPerCoreHour: parseFloat(cpu) || DEFAULT_CPU_RATE,
+      memPerGiBHour: parseFloat(mem) || DEFAULT_MEM_RATE,
+    };
+    localStorage.setItem(COST_RATES_KEY, JSON.stringify(parsed));
+    onApply(parsed);
+    onClose();
+  };
+
+  const handleReset = () => {
+    setCpu(String(DEFAULT_CPU_RATE));
+    setMem(String(DEFAULT_MEM_RATE));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-80 p-5 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Settings size={14} className="text-emerald-400" />
+            <span className="text-sm font-semibold text-slate-200">Cost Rate Settings</span>
+          </div>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 transition-colors p-1 rounded hover:bg-slate-800">
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-slate-400 font-medium">CPU Rate ($/core-hour)</span>
+            <input
+              type="number"
+              step="0.0001"
+              min="0"
+              value={cpu}
+              onChange={(e) => setCpu(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-slate-400 font-medium">Memory Rate ($/GiB-hour)</span>
+            <input
+              type="number"
+              step="0.00001"
+              min="0"
+              value={mem}
+              onChange={(e) => setMem(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500"
+            />
+          </label>
+        </div>
+
+        <div className="text-[10px] text-slate-600 leading-relaxed">
+          Defaults: CPU $0.0464/core-hr, Mem $0.00623/GiB-hr (EKS ap-northeast-1 on-demand).
+        </div>
+
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800"
+          >
+            <RotateCcw size={11} />
+            Reset to defaults
+          </button>
+          <button
+            onClick={handleApply}
+            className="ml-auto text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition-colors font-medium"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Summary Card ──────────────────────────────────────────────────────────────
@@ -164,11 +281,12 @@ function PodRow({ pod }: { pod: PodCost }) {
       <td className="px-2 py-1.5 text-xs text-slate-500 font-mono text-right">
         {formatMem(pod.mem)}
       </td>
-      <td className="px-4 py-1.5 text-xs text-slate-400 font-mono text-right">
-        {pod.hasRequests ? formatCost(pod.cost) : (
+      <td className="px-2 py-1.5 text-xs text-slate-400 font-mono text-right">
+        {pod.hasRequests ? formatMonthlyCost(pod.monthlyCostAmt) : (
           <span className="text-slate-600 italic">no requests</span>
         )}
       </td>
+      <td className="px-4 py-1.5 text-xs text-slate-600 font-mono text-right">—</td>
     </tr>
   );
 }
@@ -178,11 +296,16 @@ function PodRow({ pod }: { pod: PodCost }) {
 function NsRow({
   ns,
   dimmed,
+  maxCost,
 }: {
   ns: NsCost;
   dimmed?: boolean;
+  maxCost: number;
 }) {
   const [expanded, setExpanded] = useState(false);
+
+  // Efficiency % requires live pod metrics (not available from requests alone)
+  const efficiencyPct = undefined as number | undefined;
 
   return (
     <>
@@ -211,13 +334,30 @@ function NsRow({
         <td className="px-2 py-2.5 text-right">
           <span className="text-xs font-mono text-slate-400">{formatMem(ns.mem)}</span>
         </td>
-        <td className="px-4 py-2.5 text-right">
+        <td className="px-2 py-2.5 text-right">
           {ns.hasAnyRequests ? (
-            <span className="text-xs font-mono font-semibold text-emerald-400">
-              {formatCost(ns.cost)}
-            </span>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-xs font-mono font-semibold text-emerald-400">
+                {formatMonthlyCost(ns.monthlyCostAmt)}
+              </span>
+              {maxCost > 0 && (
+                <div className="w-20 h-1 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500/60 rounded-full"
+                    style={{ width: `${Math.min(100, (ns.monthlyCostAmt / maxCost) * 100)}%` }}
+                  />
+                </div>
+              )}
+            </div>
           ) : (
             <span className="text-xs text-slate-600 italic">—</span>
+          )}
+        </td>
+        <td className="px-4 py-2.5 text-right">
+          {efficiencyPct !== undefined ? (
+            <span className="text-xs font-mono text-slate-400">{efficiencyPct.toFixed(0)}%</span>
+          ) : (
+            <span className="text-xs text-slate-700">—</span>
           )}
         </td>
       </tr>
@@ -242,7 +382,7 @@ function ChartTooltip({
   return (
     <div className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs shadow-lg">
       <div className="text-slate-300 font-mono mb-1">{label}</div>
-      <div className="text-emerald-400 font-semibold">{formatCost(payload[0].value)}</div>
+      <div className="text-emerald-400 font-semibold">{formatMonthlyCost(payload[0].value)}</div>
     </div>
   );
 }
@@ -251,6 +391,12 @@ function ChartTooltip({
 
 export function NamespaceCostPage() {
   const { activeContext } = useAppStore();
+  const [rates, setRates] = useState<CostRates>(useCostRates);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const handleApplyRates = useCallback((newRates: CostRates) => {
+    setRates(newRates);
+  }, []);
 
   const {
     data: rawPods = [],
@@ -276,7 +422,7 @@ export function NamespaceCostPage() {
   // Compute per-namespace cost data
   const { nsData, totalCost, totalCpu, totalMem, podsWithoutRequests } =
     useMemo(() => {
-      const pods = parsePods(rawPods);
+      const pods = parsePods(rawPods, rates);
 
       const byNs = new Map<string, PodCost[]>();
       for (const pod of pods) {
@@ -289,29 +435,31 @@ export function NamespaceCostPage() {
       for (const [namespace, nsPods] of byNs.entries()) {
         const cpu = nsPods.reduce((s, p) => s + p.cpu, 0);
         const mem = nsPods.reduce((s, p) => s + p.mem, 0);
-        const cost = monthlyCost(cpu, mem);
+        const monthlyCostAmt = monthlyCostWithRates(cpu, mem, rates);
+        const hourlyRate = hourlyCostWithRates(cpu, mem, rates);
         const hasAnyRequests = nsPods.some((p) => p.hasRequests);
-        nsData.push({ namespace, pods: nsPods, cpu, mem, cost, hasAnyRequests });
+        nsData.push({ namespace, pods: nsPods, cpu, mem, cost: monthlyCostAmt, monthlyCostAmt, hourlyRate, hasAnyRequests });
       }
 
-      nsData.sort((a, b) => b.cost - a.cost);
+      // Sort by monthly cost descending by default
+      nsData.sort((a, b) => b.monthlyCostAmt - a.monthlyCostAmt);
 
       const totalCpu = nsData.reduce((s, n) => s + n.cpu, 0);
       const totalMem = nsData.reduce((s, n) => s + n.mem, 0);
-      const totalCost = monthlyCost(totalCpu, totalMem);
-      const podsWithoutRequests = parsePods(rawPods).filter(
+      const totalCost = monthlyCostWithRates(totalCpu, totalMem, rates);
+      const podsWithoutRequests = parsePods(rawPods, rates).filter(
         (p) => !p.hasRequests
       ).length;
 
       return { nsData, totalCost, totalCpu, totalMem, podsWithoutRequests };
-    }, [rawPods]);
+    }, [rawPods, rates]);
 
   const withCost = nsData.filter((n) => n.hasAnyRequests);
   const zeroCost = nsData.filter((n) => !n.hasAnyRequests);
 
   const chartData = withCost.slice(0, 10).map((n) => ({
     name: n.namespace,
-    cost: parseFloat(n.cost.toFixed(2)),
+    cost: parseFloat(n.monthlyCostAmt.toFixed(2)),
   }));
 
   if (podsLoading) {
@@ -325,6 +473,14 @@ export function NamespaceCostPage() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-950">
+      {showSettings && (
+        <CostSettingsModal
+          rates={rates}
+          onApply={handleApplyRates}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+
       {/* ── Header ── */}
       <div className="shrink-0 px-4 py-3 border-b border-slate-800">
         <div className="flex items-center justify-between">
@@ -340,14 +496,23 @@ export function NamespaceCostPage() {
               {activeContext}
             </span>
           </div>
-          <button
-            onClick={() => refetch()}
-            disabled={isFetching}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800 disabled:opacity-40"
-          >
-            <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings(true)}
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800"
+            >
+              <Settings size={12} />
+              Settings
+            </button>
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors p-1.5 rounded hover:bg-slate-800 disabled:opacity-40"
+            >
+              <RefreshCw size={12} className={isFetching ? "animate-spin" : ""} />
+              Refresh
+            </button>
+          </div>
         </div>
         <p className="mt-1.5 text-[11px] text-slate-600">
           Estimates based on resource requests × EKS on-demand pricing
@@ -361,7 +526,7 @@ export function NamespaceCostPage() {
         <div className="grid grid-cols-4 gap-3">
           <SummaryCard
             label="Est. Monthly Total"
-            value={formatCost(totalCost)}
+            value={formatMonthlyCost(totalCost)}
             icon={<DollarSign size={12} />}
             sub={`${nodeCount} node${nodeCount !== 1 ? "s" : ""} in cluster`}
           />
@@ -449,17 +614,46 @@ export function NamespaceCostPage() {
                   <th className="px-2 py-2.5 text-right">Pods</th>
                   <th className="px-2 py-2.5 text-right">CPU Req (cores)</th>
                   <th className="px-2 py-2.5 text-right">Memory Req</th>
-                  <th className="px-4 py-2.5 text-right">Est. Monthly Cost</th>
+                  <th className="px-2 py-2.5 text-right">Monthly Est.</th>
+                  <th className="px-4 py-2.5 text-right">Efficiency %</th>
                 </tr>
               </thead>
               <tbody>
                 {withCost.map((ns) => (
-                  <NsRow key={ns.namespace} ns={ns} />
+                  <NsRow key={ns.namespace} ns={ns} maxCost={withCost[0]?.monthlyCostAmt ?? 0} />
                 ))}
                 {zeroCost.map((ns) => (
-                  <NsRow key={ns.namespace} ns={ns} dimmed />
+                  <NsRow key={ns.namespace} ns={ns} dimmed maxCost={0} />
                 ))}
               </tbody>
+              {/* ── Total row ── */}
+              {nsData.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 border-slate-700 bg-slate-900/80">
+                    <td />
+                    <td className="px-2 py-2.5">
+                      <span className="text-xs font-semibold text-slate-400">Total</span>
+                    </td>
+                    <td className="px-2 py-2.5 text-right">
+                      <span className="text-xs font-mono text-slate-400">{rawPods.length}</span>
+                    </td>
+                    <td className="px-2 py-2.5 text-right">
+                      <span className="text-xs font-mono text-slate-400">{formatCpu(totalCpu)}</span>
+                    </td>
+                    <td className="px-2 py-2.5 text-right">
+                      <span className="text-xs font-mono text-slate-400">{formatMem(totalMem)}</span>
+                    </td>
+                    <td className="px-2 py-2.5 text-right">
+                      <span className="text-xs font-mono font-bold text-emerald-300">
+                        {formatMonthlyCost(totalCost)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="text-xs text-slate-700">—</span>
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           )}
         </div>

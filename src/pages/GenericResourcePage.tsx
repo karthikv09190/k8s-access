@@ -12,6 +12,7 @@ import type { InvokeArgs } from "@tauri-apps/api/core";
 import { invoke } from "@tauri-apps/api/core";
 import { deleteResource } from "../lib/tauri";
 import { Plus, Search, X } from "lucide-react";
+import { ExportMenu } from "../components/resources/ExportMenu";
 
 interface GenericResourcePageProps {
   title: string;
@@ -160,6 +161,13 @@ export function GenericResourcePage({
 
         <div className="ml-auto flex items-center gap-2">
           <RefreshSelect value={refreshInterval} onChange={setRefreshInterval} />
+          <ExportMenu
+            title={title}
+            items={filtered}
+            context={activeContext}
+            namespace={activeNamespace || undefined}
+            namespaced={namespaced}
+          />
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white shrink-0"
