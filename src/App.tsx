@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar } from "./components/layout/TopBar";
+import { TabBar, PAGE_TITLES } from "./components/layout/TabBar";
+import type { Tab } from "./components/layout/TabBar";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PodsPage } from "./pages/PodsPage";
 import { ComparePage } from "./pages/ComparePage";
@@ -10,6 +12,9 @@ import { GenericResourcePage } from "./pages/GenericResourcePage";
 import { ProblemPodsPage } from "./pages/ProblemPodsPage";
 import { RbacVisualizerPage } from "./pages/RbacVisualizerPage";
 import { HelmPage } from "./pages/HelmPage";
+import { ResourceGraphPage } from "./pages/ResourceGraphPage";
+import { GitOpsPage } from "./pages/GitOpsPage";
+import { NamespaceCostPage } from "./pages/NamespaceCostPage";
 import { StatusBadge } from "./components/resources/ResourceTable";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { checkKubectl, KubectlStatus } from "./lib/tauri";
@@ -707,6 +712,12 @@ function PageRouter({
       );
     case "helm":
       return <HelmPage key={onRefreshKey} />;
+    case "resourceGraph":
+      return <ResourceGraphPage key={onRefreshKey} />;
+    case "gitops":
+      return <GitOpsPage key={onRefreshKey} />;
+    case "namespaceCost":
+      return <NamespaceCostPage key={onRefreshKey} />;
     default:
       return (
         <div className="flex items-center justify-center h-full text-slate-500 text-sm">
@@ -763,9 +774,40 @@ function StartupBanner() {
 }
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  const [tabs, setTabs] = useState<Tab[]>([
+    { id: "tab-1", page: "dashboard", title: "Dashboard" },
+  ]);
+  const [activeTabId, setActiveTabId] = useState("tab-1");
+
+  const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+  const currentPage = activeTab.page;
   const [refreshKey, setRefreshKey] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  function navigateTo(page: string) {
+    const title = PAGE_TITLES[page] ?? page;
+    setTabs((prev) =>
+      prev.map((t) => (t.id === activeTabId ? { ...t, page, title } : t))
+    );
+  }
+
+  function openNewTab(page = "dashboard") {
+    const id = `tab-${Date.now()}`;
+    const title = PAGE_TITLES[page] ?? page;
+    setTabs((prev) => [...prev.slice(0, 7), { id, page, title }]);
+    setActiveTabId(id);
+  }
+
+  function closeTab(id: string) {
+    setTabs((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((t) => t.id !== id);
+      if (id === activeTabId) {
+        setActiveTabId(next[next.length - 1].id);
+      }
+      return next;
+    });
+  }
 
   // Global Cmd+K — opens GlobalSearch
   useEffect(() => {
@@ -777,17 +819,25 @@ export default function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
-        <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
+        <Sidebar currentPage={currentPage} onNavigate={navigateTo} />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar onRefresh={() => setRefreshKey((k) => k + 1)} />
+          <TabBar
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onSelectTab={setActiveTabId}
+            onCloseTab={closeTab}
+            onNewTab={() => openNewTab()}
+          />
           <StartupBanner />
           <main className="flex-1 overflow-hidden">
-            <PageRouter page={currentPage} onRefreshKey={refreshKey} onNavigate={setCurrentPage} />
+            <PageRouter page={currentPage} onRefreshKey={refreshKey} onNavigate={navigateTo} />
           </main>
         </div>
       </div>
@@ -795,7 +845,7 @@ export default function App() {
         <GlobalSearch
           onClose={() => setSearchOpen(false)}
           onNavigate={(page) => {
-            setCurrentPage(page);
+            navigateTo(page);
             setSearchOpen(false);
           }}
         />

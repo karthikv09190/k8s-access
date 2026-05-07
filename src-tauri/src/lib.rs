@@ -31,6 +31,7 @@ use commands::{
     clusters::{check_kubectl, list_contexts, list_namespaces},
     compare::compare_clusters,
     events::list_events,
+    gitops::{list_argo_apps, sync_argo_app},
     helm::{list_helm_releases, uninstall_helm_release},
     exec::{
         apply_resource_yaml, cordon_node, describe_resource, drain_node, exec_pod_command,
@@ -137,6 +138,9 @@ pub fn run() {
             // helm
             list_helm_releases,
             uninstall_helm_release,
+            // gitops
+            list_argo_apps,
+            sync_argo_app,
             // metrics
             get_cluster_overview,
             get_node_metrics,

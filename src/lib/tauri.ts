@@ -354,3 +354,15 @@ export const uninstallHelmRelease = (args: {
   namespace: string;
   name: string;
 }) => invoke<string>("uninstall_helm_release", args);
+
+// ── GitOps ────────────────────────────────────────────────────────────────────
+export interface ArgoApp {
+  name: string; namespace: string; project: string;
+  repoUrl: string; path: string; targetRevision: string;
+  destNamespace: string; syncStatus: string; healthStatus: string;
+  lastSyncedAt: string; images: string[]; message: string;
+}
+export const listArgoApps = (context: string) =>
+  invoke<ArgoApp[]>("list_argo_apps", { context });
+export const syncArgoApp = (args: { context: string; namespace: string; name: string }) =>
+  invoke<string>("sync_argo_app", args);

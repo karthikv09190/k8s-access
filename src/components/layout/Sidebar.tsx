@@ -2,6 +2,9 @@ import {
   Activity,
   AlertTriangle,
   Box,
+  DollarSign,
+  GitBranch,
+  Share2,
   ChevronDown,
   ChevronRight,
   Cpu,
@@ -103,6 +106,9 @@ const NAV: NavGroup[] = [
     items: [
       { label: "Compare Clusters", icon: <GitCompare size={14} />, page: "compare" },
       { label: "Helm Releases", icon: <Package size={14} />, page: "helm" },
+      { label: "Resource Graph", icon: <Share2 size={14} />, page: "resourceGraph" },
+      { label: "GitOps (ArgoCD)", icon: <GitBranch size={14} />, page: "gitops" },
+      { label: "Cost Estimation", icon: <DollarSign size={14} />, page: "namespaceCost" },
     ],
   },
 ];
