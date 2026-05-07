@@ -1,5 +1,6 @@
 use crate::kubectl::kubectl_path;
 use k8s_openapi::api::{
+    admissionregistration::v1::{MutatingWebhookConfiguration, ValidatingWebhookConfiguration},
     apps::v1::{DaemonSet, Deployment, ReplicaSet, StatefulSet},
     autoscaling::v2::HorizontalPodAutoscaler,
     batch::v1::{CronJob, Job},
@@ -103,6 +104,8 @@ list_cluster!(list_nodes, Node);
 list_cluster!(list_clusterroles, ClusterRole);
 list_cluster!(list_clusterrolebindings, ClusterRoleBinding);
 list_cluster!(list_storageclasses, StorageClass);
+list_cluster!(list_mutatingwebhookconfigurations, MutatingWebhookConfiguration);
+list_cluster!(list_validatingwebhookconfigurations, ValidatingWebhookConfiguration);
 
 // P0 new namespaced resources
 list_namespaced!(list_hpas, HorizontalPodAutoscaler);

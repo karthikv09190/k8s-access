@@ -366,3 +366,31 @@ export const listArgoApps = (context: string) =>
   invoke<ArgoApp[]>("list_argo_apps", { context });
 export const syncArgoApp = (args: { context: string; namespace: string; name: string }) =>
   invoke<string>("sync_argo_app", args);
+
+// ── CRDs ──────────────────────────────────────────────────────────────────────
+export interface CrdInfo {
+  name: string; group: string; kind: string; plural: string;
+  scope: string; versions: string[]; established: boolean;
+}
+export const listCrds = (context: string) =>
+  invoke<CrdInfo[]>("list_crds", { context });
+export const listCustomResources = (args: { context: string; crdName: string; namespace?: string }) =>
+  invoke<string>("list_custom_resources", args);
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+export const listMutatingwebhookconfigurations = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_mutatingwebhookconfigurations", args);
+export const listValidatingwebhookconfigurations = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_validatingwebhookconfigurations", args);
+
+// ── Kubeconfig ────────────────────────────────────────────────────────────────
+export const renameContext = (args: { oldName: string; newName: string }) =>
+  invoke<void>("rename_context", args);
+export const deleteContext = (name: string) =>
+  invoke<void>("delete_context", { name });
+export const setCurrentContext = (name: string) =>
+  invoke<void>("set_current_context", { name });
+export const testContextConnection = (context: string) =>
+  invoke<string>("test_context_connection", { context });
+export const importKubeconfig = (yamlContent: string) =>
+  invoke<string[]>("import_kubeconfig", { yamlContent });

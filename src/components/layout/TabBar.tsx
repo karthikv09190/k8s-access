@@ -42,6 +42,9 @@ export const PAGE_TITLES: Record<string, string> = {
   resourceGraph: "Res. Graph",
   gitops: "GitOps",
   namespaceCost: "Cost",
+  crdBrowser: "CRDs",
+  webhooks: "Webhooks",
+  kubeconfig: "Kubeconfig",
 };
 
 interface TabBarProps {

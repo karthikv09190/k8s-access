@@ -30,6 +30,11 @@ fn fix_path_for_app_bundle() {
 use commands::{
     clusters::{check_kubectl, list_contexts, list_namespaces},
     compare::compare_clusters,
+    crds::{list_crds, list_custom_resources},
+    kubeconfig::{
+        delete_context, import_kubeconfig, rename_context, set_current_context,
+        test_context_connection,
+    },
     events::list_events,
     gitops::{list_argo_apps, sync_argo_app},
     helm::{list_helm_releases, uninstall_helm_release},
@@ -44,10 +49,11 @@ use commands::{
     resources::{
         delete_resource, get_resource_yaml, list_clusterrolebindings, list_clusterroles,
         list_configmaps, list_cronjobs, list_daemonsets, list_deployments, list_endpoints,
-        list_hpas, list_ingresses, list_jobs, list_limitranges, list_networkpolicies, list_nodes,
-        list_pdbs, list_pods, list_pvcs, list_pvs, list_replicasets, list_resourcequotas,
-        list_rolebindings, list_roles, list_secrets, list_serviceaccounts, list_services,
-        list_statefulsets, list_storageclasses,
+        list_hpas, list_ingresses, list_jobs, list_limitranges,
+        list_mutatingwebhookconfigurations, list_networkpolicies, list_nodes, list_pdbs,
+        list_pods, list_pvcs, list_pvs, list_replicasets, list_resourcequotas, list_rolebindings,
+        list_roles, list_secrets, list_serviceaccounts, list_services, list_statefulsets,
+        list_storageclasses, list_validatingwebhookconfigurations,
     },
     terminal::{
         close_terminal, resize_terminal, start_terminal, write_terminal, TerminalState,
@@ -145,6 +151,18 @@ pub fn run() {
             get_cluster_overview,
             get_node_metrics,
             get_pod_metrics,
+            // crds
+            list_crds,
+            list_custom_resources,
+            // webhooks
+            list_mutatingwebhookconfigurations,
+            list_validatingwebhookconfigurations,
+            // kubeconfig management
+            rename_context,
+            delete_context,
+            set_current_context,
+            test_context_connection,
+            import_kubeconfig,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

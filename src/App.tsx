@@ -15,6 +15,9 @@ import { HelmPage } from "./pages/HelmPage";
 import { ResourceGraphPage } from "./pages/ResourceGraphPage";
 import { GitOpsPage } from "./pages/GitOpsPage";
 import { NamespaceCostPage } from "./pages/NamespaceCostPage";
+import { CrdBrowserPage } from "./pages/CrdBrowserPage";
+import { WebhookConfigsPage } from "./pages/WebhookConfigsPage";
+import { KubeconfigPage } from "./pages/KubeconfigPage";
 import { StatusBadge } from "./components/resources/ResourceTable";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { checkKubectl, KubectlStatus } from "./lib/tauri";
@@ -718,6 +721,12 @@ function PageRouter({
       return <GitOpsPage key={onRefreshKey} />;
     case "namespaceCost":
       return <NamespaceCostPage key={onRefreshKey} />;
+    case "crdBrowser":
+      return <CrdBrowserPage key={onRefreshKey} />;
+    case "webhooks":
+      return <WebhookConfigsPage key={onRefreshKey} />;
+    case "kubeconfig":
+      return <KubeconfigPage key={onRefreshKey} />;
     default:
       return (
         <div className="flex items-center justify-center h-full text-slate-500 text-sm">

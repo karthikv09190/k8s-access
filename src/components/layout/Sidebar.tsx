@@ -29,6 +29,9 @@ import {
   Timer,
   TrendingUp,
   Eye,
+  Boxes,
+  Webhook,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { useAppStore } from "../../store/app";
@@ -109,6 +112,9 @@ const NAV: NavGroup[] = [
       { label: "Resource Graph", icon: <Share2 size={14} />, page: "resourceGraph" },
       { label: "GitOps (ArgoCD)", icon: <GitBranch size={14} />, page: "gitops" },
       { label: "Cost Estimation", icon: <DollarSign size={14} />, page: "namespaceCost" },
+      { label: "CRD Browser", icon: <Boxes size={14} />, page: "crdBrowser" },
+      { label: "Webhook Configs", icon: <Webhook size={14} />, page: "webhooks" },
+      { label: "Kubeconfig", icon: <Settings size={14} />, page: "kubeconfig" },
     ],
   },
 ];

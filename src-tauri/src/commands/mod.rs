@@ -9,3 +9,5 @@ pub mod portforward;
 pub mod terminal;
 pub mod helm;
 pub mod gitops;
+pub mod crds;
+pub mod kubeconfig;
