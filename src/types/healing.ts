@@ -328,5 +328,17 @@ export interface AiContextPreview {
   enabled: boolean;
 }
 
+export interface BatchStatus {
+  running: boolean;
+  context: string | null;
+  total: number;
+  done: number;
+  proposals: number;
+  manual: number;
+  failed: number;
+  current: string | null;
+  stoppedReason: string | null;
+}
+
 /** Statuses that need no further action. */
 export const CLOSED_STATUSES: IncidentStatus[] = ["HEALED", "ROLLED_BACK", "REJECTED"];

@@ -9,6 +9,7 @@ import type {
   AiContextPreview,
   AiStatus,
   AuditRecord,
+  BatchStatus,
   ExecutionRecord,
   HealingPolicy,
   HealingProposal,
@@ -502,3 +503,11 @@ export const sendHealingChat = (incidentId: string, message: string) =>
 
 export const proposeHealingFromChat = (incidentId: string, messageId: string) =>
   invoke<Incident>("propose_healing_from_chat", { incidentId, messageId });
+
+// Batch diagnosis only: fills the approval queue, never executes anything.
+export const analyzeAllHealingIncidents = (context: string, skipUnactionable: boolean) =>
+  invoke<BatchStatus>("analyze_all_healing_incidents", { context, skipUnactionable });
+
+export const getHealingBatchStatus = () => invoke<BatchStatus>("get_healing_batch_status");
+
+export const cancelHealingBatch = () => invoke<void>("cancel_healing_batch");

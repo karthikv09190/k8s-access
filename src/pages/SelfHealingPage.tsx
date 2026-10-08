@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { HeartPulse, Loader2, Radar, Search, Settings, ShieldCheck } from "lucide-react";
 import { useAppStore } from "../store/app";
-import { getHealingIncidents, getHealingStats, scanHealingIncidents } from "../lib/tauri";
+import { getHealingAiStatus, getHealingIncidents, getHealingStats, scanHealingIncidents } from "../lib/tauri";
+import { BatchAnalyze, PendingQueue } from "../components/healing/PendingQueue";
 import { RefreshSelect } from "../components/ui/RefreshSelect";
 import { IncidentDetail } from "../components/healing/IncidentDetail";
 import { HealingSettings } from "../components/healing/HealingSettings";
@@ -40,6 +41,8 @@ export function SelfHealingPage() {
   const [search, setSearch] = useState("");
   const [scanEvery, setScanEvery] = useState(60_000);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tab, setTab] = useState<"incidents" | "pending">("incidents");
+  const { data: aiStatus } = useQuery({ queryKey: ["healing-ai-status"], queryFn: getHealingAiStatus });
 
   // Deep links from Pods / Problem Pods / Events / search.
   useEffect(() => {
@@ -103,6 +106,8 @@ export function SelfHealingPage() {
   }, [incidents, filter, search]);
 
   const selected = incidents.find((i) => i.id === selectedId) ?? null;
+  const batchCandidates = incidents.filter((i) => ["DETECTED", "EXPIRED", "STALE"].includes(i.status)).length;
+  const pendingCount = incidents.filter((i) => i.status === "PENDING_APPROVAL" || i.status === "APPROVED").length;
 
   if (!activeContext) {
     return <div className="flex items-center justify-center h-full text-slate-500 text-sm">Select a cluster context</div>;
@@ -153,13 +158,36 @@ export function SelfHealingPage() {
         <>
           <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
             <StatCard label="Active incidents" value={stats?.active} tone="text-amber-600 dark:text-amber-400" />
-            <StatCard label="Pending approval" value={stats?.pendingApproval} tone="text-violet-600 dark:text-violet-400" />
+            <button className="text-left" onClick={() => setTab("pending")} title="Open the approval queue">
+              <StatCard label="Pending approval ›" value={stats?.pendingApproval} tone="text-violet-600 dark:text-violet-400" />
+            </button>
             <StatCard label="Healing in progress" value={stats?.inProgress} tone="text-blue-600 dark:text-blue-400" />
             <StatCard label="Healed today" value={stats?.healedToday} tone="text-emerald-600 dark:text-emerald-400" />
             <StatCard label="Failed" value={stats?.failed} tone="text-red-600 dark:text-red-400" />
             <StatCard label="Needs attention" value={stats?.needsAttention} tone="text-rose-600 dark:text-rose-400" />
           </div>
 
+          <div className="flex items-center gap-2 flex-wrap border-b border-slate-200 dark:border-slate-800 pb-2">
+            {([["incidents", `Incidents (${incidents.length})`], ["pending", `Pending approval (${pendingCount})`]] as const).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setTab(k)}
+                className={`text-xs px-3 py-1.5 rounded-t font-medium ${tab === k
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-b-0 border-slate-200 dark:border-slate-800"
+                  : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"}`}
+              >
+                {label}
+              </button>
+            ))}
+            <div className="ml-auto">
+              <BatchAnalyze context={activeContext} candidates={batchCandidates} aiStatus={aiStatus} />
+            </div>
+          </div>
+
+          {tab === "pending" ? (
+            <PendingQueue incidents={incidents} onChanged={refresh} onOpen={(id) => setSelectedId(id)} />
+          ) : (
+          <>
           <div className="flex items-center gap-2">
             {(["open", "pending", "closed", "all"] as Filter[]).map((f) => (
               <button
@@ -244,6 +272,8 @@ export function SelfHealingPage() {
               </tbody>
             </table>
           </div>
+          </>
+          )}
         </>
       )}
 

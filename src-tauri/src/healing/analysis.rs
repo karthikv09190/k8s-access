@@ -184,3 +184,171 @@ where
     }
     svc.incident(incident_id)
 }
+
+/// Kinds with at least one automated action; others (Node, Job, HelmRelease,
+/// ReplicaSet…) can only ever be diagnosed, never healed.
+pub const ACTIONABLE_KINDS: [&str; 4] = ["Deployment", "StatefulSet", "DaemonSet", "Pod"];
+
+/// Open incidents in `context` that have not been diagnosed for their current
+/// state (DETECTED / EXPIRED / STALE), most severe and most recent first.
+pub fn batch_candidates(
+    incidents: &[Incident],
+    context: &str,
+    skip_unactionable: bool,
+) -> Vec<String> {
+    let mut v: Vec<&Incident> = incidents
+        .iter()
+        .filter(|i| i.binding.context == context)
+        .filter(|i| {
+            matches!(
+                i.status,
+                IncidentStatus::Detected | IncidentStatus::Expired | IncidentStatus::Stale
+            )
+        })
+        .filter(|i| !skip_unactionable || ACTIONABLE_KINDS.contains(&i.resource.kind.as_str()))
+        .collect();
+    v.sort_by(|a, b| {
+        b.severity
+            .cmp(&a.severity)
+            .then(b.last_detected.cmp(&a.last_detected))
+    });
+    v.into_iter().map(|i| i.id.clone()).collect()
+}
+
+/// Provider errors that mean further calls will fail too (stop the batch).
+pub fn is_usage_limit(msg: &str) -> bool {
+    let m = msg.to_lowercase();
+    [
+        "session limit",
+        "usage limit",
+        "rate limit",
+        "rate_limit",
+        "quota",
+        "credit balance",
+        "overloaded",
+    ]
+    .iter()
+    .any(|k| m.contains(k))
+}
+
+#[cfg(test)]
+mod batch_tests {
+    use super::*;
+
+    fn inc(
+        id: &str,
+        ctx: &str,
+        kind: &str,
+        status: IncidentStatus,
+        sev: Severity,
+        last: Millis,
+    ) -> Incident {
+        let r = ResourceRef {
+            kind: kind.into(),
+            namespace: Some("ns".into()),
+            name: id.into(),
+            uid: None,
+        };
+        Incident {
+            id: id.into(),
+            key: id.into(),
+            binding: ClusterBinding {
+                context: ctx.into(),
+                cluster_name: "c".into(),
+                server: "s".into(),
+            },
+            severity: sev,
+            status,
+            resource: r,
+            problem: "p".into(),
+            symptoms: vec![],
+            affected: vec![],
+            restart_count: None,
+            first_detected: 0,
+            last_detected: last,
+            gitops_owner: None,
+            diagnosis: None,
+            diagnosis_error: None,
+            proposals: vec![],
+            active_proposal_id: None,
+            approvals: vec![],
+            rejections: vec![],
+            executions: vec![],
+            verifications: vec![],
+            history: vec![],
+            last_error: None,
+            conversation: vec![],
+        }
+    }
+
+    #[test]
+    fn selects_open_undiagnosed_in_context_most_severe_first() {
+        use IncidentStatus::*;
+        let all = vec![
+            inc(
+                "warn-dep",
+                "dev",
+                "Deployment",
+                Detected,
+                Severity::Warning,
+                5,
+            ),
+            inc(
+                "crit-dep",
+                "dev",
+                "Deployment",
+                Detected,
+                Severity::Critical,
+                1,
+            ),
+            inc("job", "dev", "Job", Detected, Severity::Warning, 9),
+            inc("node", "dev", "Node", Detected, Severity::Critical, 9),
+            inc("stale", "dev", "StatefulSet", Stale, Severity::Warning, 2),
+            inc(
+                "pending",
+                "dev",
+                "Deployment",
+                PendingApproval,
+                Severity::Critical,
+                9,
+            ),
+            inc(
+                "manual",
+                "dev",
+                "Deployment",
+                ManualInterventionRequired,
+                Severity::Critical,
+                9,
+            ),
+            inc("healed", "dev", "Deployment", Healed, Severity::Critical, 9),
+            inc(
+                "other-ctx",
+                "apac",
+                "Deployment",
+                Detected,
+                Severity::Critical,
+                9,
+            ),
+        ];
+        assert_eq!(
+            batch_candidates(&all, "dev", true),
+            vec!["crit-dep", "warn-dep", "stale"]
+        );
+        let with_all = batch_candidates(&all, "dev", false);
+        assert!(with_all.contains(&"job".to_string()) && with_all.contains(&"node".to_string()));
+        assert!(!with_all
+            .iter()
+            .any(|i| ["pending", "manual", "healed", "other-ctx"].contains(&i.as_str())));
+    }
+
+    #[test]
+    fn usage_limits_stop_the_batch() {
+        assert!(is_usage_limit(
+            "AI provider error: You've hit your session limit · resets 2pm"
+        ));
+        assert!(is_usage_limit("429 rate_limit_error"));
+        assert!(!is_usage_limit(
+            "AI returned an invalid diagnosis: no evidence"
+        ));
+    }
+}

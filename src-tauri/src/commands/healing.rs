@@ -29,6 +29,23 @@ pub struct HealingState {
     pub policy_path: Option<PathBuf>,
     pub ai: RwLock<AiConfig>,
     pub ai_path: Option<PathBuf>,
+    /// "Analyze all open" batch progress (diagnosis only — never executes).
+    pub batch: Arc<std::sync::Mutex<BatchStatus>>,
+    pub batch_cancel: Arc<std::sync::atomic::AtomicBool>,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchStatus {
+    pub running: bool,
+    pub context: Option<String>,
+    pub total: usize,
+    pub done: usize,
+    pub proposals: usize,
+    pub manual: usize,
+    pub failed: usize,
+    pub current: Option<String>,
+    pub stopped_reason: Option<String>,
 }
 
 impl HealingState {
@@ -90,6 +107,8 @@ impl HealingState {
             policy_path,
             ai: RwLock::new(ai),
             ai_path,
+            batch: Arc::new(std::sync::Mutex::new(BatchStatus::default())),
+            batch_cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
 
@@ -602,4 +621,120 @@ pub async fn propose_healing_from_chat(
         emit_updated(&app, &inc);
     }
     Ok(result?)
+}
+
+// ── Analyze all open (batch diagnosis; never executes) ───────────────────────
+
+/// Starts a background, one-at-a-time AI diagnosis of every open incident in
+/// `context` that has not been analyzed yet. Produces at most
+/// PENDING_APPROVAL proposals; nothing is executed. Stops on cancel or when
+/// the AI provider reports a usage/rate limit.
+#[tauri::command]
+pub async fn analyze_all_healing_incidents(
+    context: String,
+    skip_unactionable: bool,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<BatchStatus, String> {
+    use std::sync::atomic::Ordering;
+    let cfg = state.ai_config();
+    if !cfg.enabled {
+        return Err(analysis::disabled_error().to_string());
+    }
+    let provider = stored_token(&cfg).and_then(|t| ClaudeCliProvider::from_config(&cfg, t))?;
+    let ids = analysis::batch_candidates(&state.service.incidents(), &context, skip_unactionable);
+    {
+        let mut b = state.batch.lock().unwrap();
+        if b.running {
+            return Err("a batch analysis is already running".into());
+        }
+        *b = BatchStatus {
+            running: true,
+            context: Some(context.clone()),
+            total: ids.len(),
+            ..Default::default()
+        };
+    }
+    state.batch_cancel.store(false, Ordering::SeqCst);
+    let (service, batch, cancel) = (
+        state.service.clone(),
+        state.batch.clone(),
+        state.batch_cancel.clone(),
+    );
+    let snapshot = batch.lock().unwrap().clone();
+    let _ = app.emit("healing-batch-progress", &snapshot);
+
+    tauri::async_runtime::spawn(async move {
+        for id in ids {
+            if cancel.load(Ordering::SeqCst) {
+                batch.lock().unwrap().stopped_reason = Some("cancelled".into());
+                break;
+            }
+            let label = service
+                .incident(&id)
+                .map(|i| format!("{}/{}", i.resource.kind, i.resource.name))
+                .unwrap_or_default();
+            batch.lock().unwrap().current = Some(label);
+            let _ = app.emit("healing-batch-progress", &batch.lock().unwrap().clone());
+            let result =
+                analysis::analyze(&service, &KubectlReader, Ok(&provider), &cfg, &id, false).await;
+            let stop = {
+                let mut b = batch.lock().unwrap();
+                b.done += 1;
+                match (&result, service.incident(&id).map(|i| i.status)) {
+                    (Ok(_), Ok(crate::healing::model::IncidentStatus::PendingApproval)) => {
+                        b.proposals += 1
+                    }
+                    (Ok(_), _) => b.manual += 1,
+                    (Err(e), _) => {
+                        b.failed += 1;
+                        let msg = e.to_string();
+                        if analysis::is_usage_limit(&msg) {
+                            b.stopped_reason = Some(format!("stopped: {}", msg));
+                        }
+                    }
+                }
+                b.stopped_reason.is_some()
+            };
+            if let Ok(inc) = service.incident(&id) {
+                emit_updated(&app, &inc);
+            }
+            let _ = app.emit("healing-batch-progress", &batch.lock().unwrap().clone());
+            if stop {
+                break;
+            }
+        }
+        let mut b = batch.lock().unwrap();
+        b.running = false;
+        b.current = None;
+        let _ = app.emit("healing-batch-progress", &b.clone());
+        log::info(&format!(
+            "batch analysis finished: {}/{} done, {} proposals, {} manual, {} failed{}",
+            b.done,
+            b.total,
+            b.proposals,
+            b.manual,
+            b.failed,
+            b.stopped_reason
+                .as_deref()
+                .map(|r| format!(" ({})", r))
+                .unwrap_or_default()
+        ));
+    });
+    Ok(snapshot)
+}
+
+#[tauri::command]
+pub async fn get_healing_batch_status(
+    state: tauri::State<'_, HealingState>,
+) -> Result<BatchStatus, String> {
+    Ok(state.batch.lock().unwrap().clone())
+}
+
+#[tauri::command]
+pub async fn cancel_healing_batch(state: tauri::State<'_, HealingState>) -> Result<(), String> {
+    state
+        .batch_cancel
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    Ok(())
 }
