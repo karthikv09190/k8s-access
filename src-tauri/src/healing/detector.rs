@@ -625,6 +625,7 @@ pub fn correlate(
                 reason: "detected".into(),
             }],
             last_error: None,
+            conversation: vec![],
         });
     }
     out

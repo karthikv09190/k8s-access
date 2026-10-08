@@ -495,3 +495,10 @@ export const saveClaudeToken = (token: string) => invoke<string>("save_claude_to
 export const deleteClaudeToken = () => invoke<void>("delete_claude_token");
 
 export const testClaudeAuth = () => invoke<string>("test_claude_auth");
+
+// Chat never changes the cluster; a suggestion becomes a proposal only when asked.
+export const sendHealingChat = (incidentId: string, message: string) =>
+  invoke<Incident>("send_healing_chat", { incidentId, message });
+
+export const proposeHealingFromChat = (incidentId: string, messageId: string) =>
+  invoke<Incident>("propose_healing_from_chat", { incidentId, messageId });

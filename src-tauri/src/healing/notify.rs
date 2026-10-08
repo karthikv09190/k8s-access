@@ -127,7 +127,8 @@ pub fn notification_for(r: &AuditRecord) -> Option<HealingNotification> {
         ),
         AuditEvent::AnalysisStarted
         | AuditEvent::ApprovalRefused
-        | AuditEvent::ExecutionRefused => return None,
+        | AuditEvent::ExecutionRefused
+        | AuditEvent::ChatExchange => return None,
     };
     Some(HealingNotification {
         id: format!("healing-{}", r.id),

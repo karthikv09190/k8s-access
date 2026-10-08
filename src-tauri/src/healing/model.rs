@@ -151,6 +151,60 @@ pub enum ActionType {
     RollbackDeployment,
     ScaleDeployment,
     ScaleStatefulset,
+    PatchWorkload,
+}
+
+/// Typed probe tuning. Only timing/threshold fields; the probe handler is
+/// never taken from AI (a new startupProbe reuses the liveness handler).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProbeChange {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initial_delay_seconds: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub period_seconds: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_seconds: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failure_threshold: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub success_threshold: Option<u32>,
+}
+
+/// Kubernetes quantities, e.g. "250m", "512Mi".
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceChange {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requests_cpu: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requests_memory: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limits_cpu: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub limits_memory: Option<String>,
+}
+
+/// The ONLY fields PATCH_WORKLOAD can change. The backend turns this typed
+/// value into a strategic-merge patch itself; AI never supplies raw patches.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WorkloadPatch {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub liveness_probe: Option<ProbeChange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub readiness_probe: Option<ProbeChange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub startup_probe: Option<ProbeChange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resources: Option<ResourceChange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub termination_grace_period_seconds: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pre_stop_sleep_seconds: Option<u32>,
+    /// New tag for the container's CURRENT image repository.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_tag: Option<String>,
 }
 
 /// Every mutation Self-Healing can perform. Anything not representable here
@@ -184,6 +238,14 @@ pub enum HealingAction {
         name: String,
         replicas: u32,
     },
+    /// Strategic-merge patch of allow-listed container/pod fields.
+    PatchWorkload {
+        namespace: String,
+        kind: WorkloadKind,
+        name: String,
+        container: String,
+        changes: WorkloadPatch,
+    },
 }
 
 impl HealingAction {
@@ -194,6 +256,7 @@ impl HealingAction {
             HealingAction::RollbackDeployment { .. } => ActionType::RollbackDeployment,
             HealingAction::ScaleDeployment { .. } => ActionType::ScaleDeployment,
             HealingAction::ScaleStatefulSet { .. } => ActionType::ScaleStatefulset,
+            HealingAction::PatchWorkload { .. } => ActionType::PatchWorkload,
         }
     }
 
@@ -204,7 +267,8 @@ impl HealingAction {
             HealingAction::RolloutRestart { .. } => RiskLevel::Medium,
             HealingAction::RollbackDeployment { .. }
             | HealingAction::ScaleDeployment { .. }
-            | HealingAction::ScaleStatefulSet { .. } => RiskLevel::High,
+            | HealingAction::ScaleStatefulSet { .. }
+            | HealingAction::PatchWorkload { .. } => RiskLevel::High,
         }
     }
 
@@ -214,7 +278,8 @@ impl HealingAction {
             | HealingAction::RolloutRestart { namespace, .. }
             | HealingAction::RollbackDeployment { namespace, .. }
             | HealingAction::ScaleDeployment { namespace, .. }
-            | HealingAction::ScaleStatefulSet { namespace, .. } => namespace,
+            | HealingAction::ScaleStatefulSet { namespace, .. }
+            | HealingAction::PatchWorkload { namespace, .. } => namespace,
         }
     }
 
@@ -222,7 +287,8 @@ impl HealingAction {
     pub fn target(&self) -> (&'static str, &str) {
         match self {
             HealingAction::RestartPod { pod, .. } => ("Pod", pod),
-            HealingAction::RolloutRestart { kind, name, .. } => (kind.as_str(), name),
+            HealingAction::RolloutRestart { kind, name, .. }
+            | HealingAction::PatchWorkload { kind, name, .. } => (kind.as_str(), name),
             HealingAction::RollbackDeployment { name, .. }
             | HealingAction::ScaleDeployment { name, .. } => ("Deployment", name),
             HealingAction::ScaleStatefulSet { name, .. } => ("StatefulSet", name),
@@ -283,8 +349,100 @@ impl HealingAction {
                     name, namespace, replicas
                 )
             }
+            HealingAction::PatchWorkload {
+                namespace,
+                kind,
+                name,
+                container,
+                changes,
+            } => {
+                let mut parts = Vec::new();
+                if changes.liveness_probe.is_some() {
+                    parts.push("livenessProbe");
+                }
+                if changes.readiness_probe.is_some() {
+                    parts.push("readinessProbe");
+                }
+                if changes.startup_probe.is_some() {
+                    parts.push("startupProbe");
+                }
+                if changes.resources.is_some() {
+                    parts.push("resources");
+                }
+                if changes.termination_grace_period_seconds.is_some() {
+                    parts.push("terminationGracePeriodSeconds");
+                }
+                if changes.pre_stop_sleep_seconds.is_some() {
+                    parts.push("preStop sleep");
+                }
+                if changes.image_tag.is_some() {
+                    parts.push("image tag");
+                }
+                format!(
+                    "Patch {}/{} in {} (container {}): {}",
+                    kind.as_str(),
+                    name,
+                    namespace,
+                    container,
+                    parts.join(", ")
+                )
+            }
         }
     }
+}
+
+/// One field touched by a workload patch: before → after (compact JSON).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldChange {
+    pub path: String,
+    pub before: String,
+    pub after: String,
+}
+
+/// Result of `kubectl patch --dry-run=server` at proposal time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DryRunResult {
+    pub ok: bool,
+    pub error: Option<String>,
+    pub changes: Vec<FieldChange>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ChatRole {
+    Operator,
+    Assistant,
+}
+
+/// One turn of the "Discuss with AI" conversation. A suggested action is
+/// only a suggestion: it becomes a proposal when the operator asks, and then
+/// still needs approval.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatMessage {
+    pub id: String,
+    pub role: ChatRole,
+    pub text: String,
+    pub at: Millis,
+    #[serde(default)]
+    pub suggested_action: Option<HealingAction>,
+    #[serde(default)]
+    pub suggestion_error: Option<String>,
+    #[serde(default)]
+    pub gitops_suggestion: Option<String>,
+    #[serde(default)]
+    pub risk_level: Option<RiskLevel>,
+    #[serde(default)]
+    pub confidence: Option<f64>,
+    #[serde(default)]
+    pub evidence: Vec<String>,
+    #[serde(default)]
+    pub model: Option<String>,
+    /// Proposal created from this suggestion, if any.
+    #[serde(default)]
+    pub proposal_id: Option<String>,
 }
 
 // ── Observed state ────────────────────────────────────────────────────────────
@@ -439,6 +597,13 @@ pub struct HealingProposal {
     pub gitops_owner: Option<String>,
     /// Policy verdict at creation time; `Some` means it cannot be approved.
     pub blocked_reason: Option<String>,
+    /// PATCH_WORKLOAD only: the exact strategic-merge patch that will be
+    /// applied (generated by the backend, covered by the hash).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub patch: Option<serde_json::Value>,
+    /// PATCH_WORKLOAD only: server-side dry-run validation and field diff.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dry_run: Option<DryRunResult>,
     pub created_at: Millis,
     pub expires_at: Millis,
     /// SHA-256 over every other field. Approval binds to this value.
@@ -550,6 +715,9 @@ pub struct Incident {
     pub verifications: Vec<VerificationRecord>,
     pub history: Vec<StatusChange>,
     pub last_error: Option<String>,
+    /// "Discuss with AI" conversation.
+    #[serde(default)]
+    pub conversation: Vec<ChatMessage>,
 }
 
 impl Incident {

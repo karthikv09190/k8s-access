@@ -53,6 +53,8 @@ pub enum HealingError {
     AiUnavailable(String),
     #[error("AI proposed an unsupported remediation: {0}")]
     UnsupportedAiAction(String),
+    #[error("Invalid request: {0}")]
+    InvalidInput(String),
     #[error("Kubernetes error: {0}")]
     Cluster(String),
     #[error("Storage error: {0}")]

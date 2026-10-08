@@ -52,12 +52,30 @@ pub trait ClusterGateway: Send + Sync {
     ) -> Result<Option<String>, String>;
     /// The ONLY mutating operation.
     async fn apply(&self, permit: &ExecutionPermit) -> Result<GatewayOutput, String>;
+    /// Read the full workload object (patch generation).
+    async fn workload_object(
+        &self,
+        binding: &ClusterBinding,
+        kind: &str,
+        namespace: &str,
+        name: &str,
+    ) -> Result<Value, String>;
+    /// `kubectl patch --dry-run=server`: validated by the API server, never
+    /// persisted. Used only to preview a proposal.
+    async fn dry_run_patch(
+        &self,
+        binding: &ClusterBinding,
+        kind: &str,
+        namespace: &str,
+        name: &str,
+        patch: &Value,
+    ) -> Result<Value, String>;
 }
 
 /// argv (without the kubectl binary) that `apply` runs for an action. Used for
 /// the approval preview and the audit trail. Names are policy-validated
 /// RFC 1123 strings, passed as separate arguments — never through a shell.
-pub fn kubectl_argv(context: &str, action: &HealingAction) -> Vec<String> {
+pub fn kubectl_argv(context: &str, action: &HealingAction, patch: Option<&Value>) -> Vec<String> {
     let s = |v: &str| v.to_string();
     match action {
         HealingAction::RestartPod { namespace, pod } => vec![
@@ -122,6 +140,63 @@ pub fn kubectl_argv(context: &str, action: &HealingAction) -> Vec<String> {
             format!("statefulset/{}", name),
             format!("--replicas={}", replicas),
         ],
+        HealingAction::PatchWorkload {
+            namespace,
+            kind,
+            name,
+            ..
+        } => vec![
+            s("patch"),
+            format!("{}/{}", kind.as_str().to_lowercase(), name),
+            s("--context"),
+            s(context),
+            s("-n"),
+            s(namespace),
+            s("--type"),
+            s("strategic"),
+            s("-p"),
+            patch.map(|p| p.to_string()).unwrap_or_default(),
+        ],
+    }
+}
+
+/// Server-side dry run of a workload patch: the API server validates and
+/// admits it but persists nothing. Always carries `--dry-run=server`.
+pub fn dry_run_argv(
+    context: &str,
+    kind: &str,
+    namespace: &str,
+    name: &str,
+    patch: &Value,
+) -> Vec<String> {
+    vec![
+        "patch".into(),
+        format!("{}/{}", kind.to_lowercase(), name),
+        "--context".into(),
+        context.into(),
+        "-n".into(),
+        namespace.into(),
+        "--type".into(),
+        "strategic".into(),
+        "-p".into(),
+        patch.to_string(),
+        "--dry-run=server".into(),
+        "-o".into(),
+        "json".into(),
+    ]
+}
+
+async fn run_kubectl(args: &[String]) -> Result<String, String> {
+    let out = tokio::process::Command::new(kubectl_path())
+        .args(args)
+        .kill_on_drop(true)
+        .output()
+        .await
+        .map_err(|e| format!("failed to run kubectl: {}", e))?;
+    if out.status.success() {
+        Ok(String::from_utf8_lossy(&out.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
     }
 }
 
@@ -430,7 +505,7 @@ impl ClusterGateway for KubectlGateway {
     async fn apply(&self, permit: &ExecutionPermit) -> Result<GatewayOutput, String> {
         use crate::commands::{exec, resources};
         let ctx = permit.binding().context.clone();
-        let command = kubectl_argv(&ctx, permit.action());
+        let command = kubectl_argv(&ctx, permit.action(), permit.patch());
         // Reuse the existing resource-action implementations.
         let output = match permit.action().clone() {
             HealingAction::RestartPod { namespace, pod } => {
@@ -460,8 +535,44 @@ impl ClusterGateway for KubectlGateway {
                 name,
                 replicas,
             } => exec::scale_resource(ctx, namespace, "StatefulSet".into(), name, replicas).await,
+            HealingAction::PatchWorkload { .. } => {
+                // The exact approved patch (stored in the sealed proposal).
+                if permit.patch().is_none() {
+                    return Err("approved patch is missing".into());
+                }
+                run_kubectl(&command).await
+            }
         }?;
         Ok(GatewayOutput { command, output })
+    }
+
+    async fn workload_object(
+        &self,
+        binding: &ClusterBinding,
+        kind: &str,
+        namespace: &str,
+        name: &str,
+    ) -> Result<Value, String> {
+        kubectl_get_json(&binding.context, namespace, kind, name).await
+    }
+
+    async fn dry_run_patch(
+        &self,
+        binding: &ClusterBinding,
+        kind: &str,
+        namespace: &str,
+        name: &str,
+        patch: &Value,
+    ) -> Result<Value, String> {
+        let out = run_kubectl(&dry_run_argv(
+            &binding.context,
+            kind,
+            namespace,
+            name,
+            patch,
+        ))
+        .await?;
+        serde_json::from_str(&out).map_err(|e| e.to_string())
     }
 }
 
@@ -471,13 +582,36 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn patch_argv_and_dry_run_argv() {
+        let patch = json!({"spec":{"template":{"spec":{"terminationGracePeriodSeconds":60}}}});
+        let a = HealingAction::PatchWorkload {
+            namespace: "payments".into(),
+            kind: WorkloadKind::Deployment,
+            name: "payment-api".into(),
+            container: "api".into(),
+            changes: Default::default(),
+        };
+        let apply = kubectl_argv("ctx", &a, Some(&patch));
+        assert_eq!(&apply[..2], ["patch", "deployment/payment-api"]);
+        assert!(apply.contains(&"strategic".to_string()));
+        assert!(!apply.iter().any(|s| s.contains("dry-run")));
+        assert_eq!(
+            apply.last().unwrap(),
+            &patch.to_string(),
+            "patch JSON is one argv element"
+        );
+        let dry = dry_run_argv("ctx", "Deployment", "payments", "payment-api", &patch);
+        assert!(dry.contains(&"--dry-run=server".to_string()));
+    }
+
+    #[test]
     fn argv_never_uses_shell_and_keeps_names_as_single_args() {
         let a = HealingAction::RolloutRestart {
             namespace: "payments".into(),
             kind: WorkloadKind::Deployment,
             name: "payment-api".into(),
         };
-        let argv = kubectl_argv("cluster-eks-apac", &a);
+        let argv = kubectl_argv("cluster-eks-apac", &a, None);
         assert_eq!(
             argv,
             [

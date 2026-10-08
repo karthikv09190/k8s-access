@@ -38,7 +38,47 @@ export type HealingAction =
   | { type: "ROLLOUT_RESTART"; namespace: string; kind: string; name: string }
   | { type: "ROLLBACK_DEPLOYMENT"; namespace: string; name: string; to_revision: number }
   | { type: "SCALE_DEPLOYMENT"; namespace: string; name: string; replicas: number }
-  | { type: "SCALE_STATEFULSET"; namespace: string; name: string; replicas: number };
+  | { type: "SCALE_STATEFULSET"; namespace: string; name: string; replicas: number }
+  | { type: "PATCH_WORKLOAD"; namespace: string; kind: string; name: string; container: string; changes: WorkloadPatch };
+
+export interface ProbeChange {
+  initial_delay_seconds?: number;
+  period_seconds?: number;
+  timeout_seconds?: number;
+  failure_threshold?: number;
+  success_threshold?: number;
+}
+
+export interface WorkloadPatch {
+  liveness_probe?: ProbeChange;
+  readiness_probe?: ProbeChange;
+  startup_probe?: ProbeChange;
+  resources?: { requests_cpu?: string; requests_memory?: string; limits_cpu?: string; limits_memory?: string };
+  termination_grace_period_seconds?: number;
+  pre_stop_sleep_seconds?: number;
+  image_tag?: string;
+}
+
+export interface DryRunResult {
+  ok: boolean;
+  error: string | null;
+  changes: { path: string; before: string; after: string }[];
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "OPERATOR" | "ASSISTANT";
+  text: string;
+  at: number;
+  suggestedAction: HealingAction | null;
+  suggestionError: string | null;
+  gitopsSuggestion: string | null;
+  riskLevel: RiskLevel | null;
+  confidence: number | null;
+  evidence: string[];
+  model: string | null;
+  proposalId: string | null;
+}
 
 export interface StateSnapshot {
   replicas: number | null;
@@ -78,6 +118,8 @@ export interface HealingProposal {
   verificationTarget: { kind: string; namespace: string; name: string; expectedReplicas: number | null };
   gitopsOwner: string | null;
   blockedReason: string | null;
+  patch?: unknown;
+  dryRun?: DryRunResult;
   createdAt: number;
   expiresAt: number;
   hash: string;
@@ -151,6 +193,7 @@ export interface AiDiagnosis {
   rollback_strategy: string;
   limitations: string[];
   uncertainty: string;
+  gitops_suggestion?: string | null;
 }
 
 export interface ContextMeta {
@@ -193,6 +236,7 @@ export interface Incident {
   verifications: VerificationRecord[];
   history: StatusChange[];
   lastError: string | null;
+  conversation: ChatMessage[];
 }
 
 export interface HealingStats {

@@ -29,6 +29,7 @@ pub enum AuditEvent {
     VerificationFailed,
     RollbackProposed,
     Interrupted,
+    ChatExchange,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

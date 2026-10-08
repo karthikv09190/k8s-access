@@ -49,17 +49,30 @@ impl Clock for SystemClock {
 pub struct ExecutionPermit {
     binding: ClusterBinding,
     action: HealingAction,
+    patch: Option<serde_json::Value>,
 }
 
 impl ExecutionPermit {
-    fn new(binding: ClusterBinding, action: HealingAction) -> Self {
-        Self { binding, action }
+    fn new(
+        binding: ClusterBinding,
+        action: HealingAction,
+        patch: Option<serde_json::Value>,
+    ) -> Self {
+        Self {
+            binding,
+            action,
+            patch,
+        }
     }
     pub fn binding(&self) -> &ClusterBinding {
         &self.binding
     }
     pub fn action(&self) -> &HealingAction {
         &self.action
+    }
+    /// PATCH_WORKLOAD: the exact patch sealed into the approved proposal.
+    pub fn patch(&self) -> Option<&serde_json::Value> {
+        self.patch.as_ref()
     }
 }
 
@@ -417,6 +430,40 @@ impl<G: ClusterGateway, C: Clock> HealingService<G, C> {
         Ok(())
     }
 
+    /// Stores a "Discuss with AI" exchange. Never changes incident status and
+    /// never touches the cluster.
+    pub fn append_chat(
+        &self,
+        incident_id: &str,
+        messages: Vec<ChatMessage>,
+        audit_detail: &str,
+    ) -> HealingResult<Incident> {
+        let inc = self.with_incident(incident_id, |inc, _| {
+            inc.conversation.extend(messages);
+            // Bounded history kept with the incident.
+            let excess = inc.conversation.len().saturating_sub(200);
+            inc.conversation.drain(..excess);
+            Ok(inc.clone())
+        })?;
+        self.record(&inc, AuditEvent::ChatExchange, None, None, audit_detail);
+        Ok(inc)
+    }
+
+    /// Links a chat suggestion to the proposal created from it.
+    pub fn link_chat_proposal(
+        &self,
+        incident_id: &str,
+        message_id: &str,
+        proposal_id: &str,
+    ) -> HealingResult<()> {
+        self.with_incident(incident_id, |inc, _| {
+            if let Some(m) = inc.conversation.iter_mut().find(|m| m.id == message_id) {
+                m.proposal_id = Some(proposal_id.to_string());
+            }
+            Ok(())
+        })
+    }
+
     /// Diagnosis produced no executable action.
     pub fn require_manual(&self, incident_id: &str, reason: &str) -> HealingResult<Incident> {
         let inc = self.with_incident(incident_id, |inc, now| {
@@ -536,7 +583,64 @@ impl<G: ClusterGateway, C: Clock> HealingService<G, C> {
                 name: name.clone(),
                 expected_replicas: Some(*replicas),
             },
+            HealingAction::PatchWorkload {
+                namespace,
+                kind,
+                name,
+                ..
+            } => VerificationTarget {
+                kind: *kind,
+                namespace: namespace.clone(),
+                name: name.clone(),
+                expected_replicas: None,
+            },
         };
+
+        // PATCH_WORKLOAD: build the patch from the CURRENT object and validate
+        // it with a server-side dry run (nothing is persisted).
+        let mut patch_value = None;
+        let mut dry_run = None;
+        let mut dry_run_block = None;
+        if let HealingAction::PatchWorkload {
+            namespace,
+            kind,
+            name,
+            container,
+            changes,
+        } = action
+        {
+            let obj = self
+                .gateway
+                .workload_object(&binding, kind.as_str(), namespace, name)
+                .await
+                .map_err(|e| {
+                    HealingError::TargetNotFound(format!("{}: {}", action.target_display(), e))
+                })?;
+            let built = super::patch::build(&obj, container, changes)
+                .map_err(HealingError::UnsupportedAiAction)?;
+            let result = self
+                .gateway
+                .dry_run_patch(&binding, kind.as_str(), namespace, name, &built.patch)
+                .await;
+            let (ok, error, server_obj) = match result {
+                Ok(v) => (true, None, Some(v)),
+                Err(e) => (false, Some(super::sanitizer::redact_text(&e).0), None),
+            };
+            if let Some(e) = &error {
+                dry_run_block = Some(format!("server dry-run rejected the patch: {}", e));
+            }
+            dry_run = Some(DryRunResult {
+                ok,
+                error,
+                changes: super::patch::field_changes(
+                    &obj,
+                    server_obj.as_ref(),
+                    &built.after,
+                    &built.fields,
+                ),
+            });
+            patch_value = Some(built.patch);
+        }
 
         let vt = &verification_target;
         let current_state = self
@@ -556,6 +660,26 @@ impl<G: ClusterGateway, C: Clock> HealingService<G, C> {
             HealingAction::RolloutRestart { .. } | HealingAction::RestartPod { .. } => {
                 proposed_state.ready = Some("all replicas ready after restart".into())
             }
+            HealingAction::PatchWorkload {
+                changes, container, ..
+            } => {
+                if let Some(tag) = &changes.image_tag {
+                    proposed_state.images = current_state
+                        .images
+                        .iter()
+                        .map(|i| super::patch::retag(i, tag))
+                        .collect();
+                    if current_state.images.len() > 1 {
+                        proposed_state.ready = Some(format!(
+                            "image change applies to container {} only",
+                            container
+                        ));
+                    }
+                }
+                if proposed_state.ready == current_state.ready {
+                    proposed_state.ready = Some("all replicas ready after rollout".into());
+                }
+            }
         }
         let gitops_owner = self
             .gateway
@@ -569,7 +693,8 @@ impl<G: ClusterGateway, C: Clock> HealingService<G, C> {
         let blocked_reason = policy
             .validate_action(&binding.context, action, risk)
             .err()
-            .map(|e| e.to_string());
+            .map(|e| e.to_string())
+            .or(dry_run_block);
         let now = self.clock.now();
         let p = proposal::seal(HealingProposal {
             id: new_id(),
@@ -591,6 +716,8 @@ impl<G: ClusterGateway, C: Clock> HealingService<G, C> {
             verification_target,
             gitops_owner,
             blocked_reason: blocked_reason.clone(),
+            patch: patch_value,
+            dry_run,
             created_at: now,
             expires_at: now + policy.ttl_ms(),
             hash: String::new(),
@@ -921,7 +1048,7 @@ impl<G: ClusterGateway, C: Clock> HealingService<G, C> {
             .snapshot(&p.binding, vt.kind.as_str(), &vt.namespace, &vt.name)
             .await
             .ok();
-        let permit = ExecutionPermit::new(p.binding.clone(), p.action.clone());
+        let permit = ExecutionPermit::new(p.binding.clone(), p.action.clone(), p.patch.clone());
         let started_at = self.clock.now();
         let result = self.gateway.apply(&permit).await;
         let post_state = self
@@ -934,7 +1061,7 @@ impl<G: ClusterGateway, C: Clock> HealingService<G, C> {
             Ok(o) => (true, o.command, o.output, None),
             Err(e) => (
                 false,
-                super::gateway::kubectl_argv(&p.binding.context, &p.action),
+                super::gateway::kubectl_argv(&p.binding.context, &p.action, p.patch.as_ref()),
                 String::new(),
                 Some(e),
             ),

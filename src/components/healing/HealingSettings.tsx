@@ -8,7 +8,7 @@ import {
 import type { AiConfig, AiStatus, HealingPolicy, RiskLevel } from "../../types/healing";
 import { btn, errorText } from "./shared";
 
-const ACTIONS = ["RESTART_POD", "ROLLOUT_RESTART", "ROLLBACK_DEPLOYMENT", "SCALE_DEPLOYMENT", "SCALE_STATEFULSET"];
+const ACTIONS = ["RESTART_POD", "ROLLOUT_RESTART", "ROLLBACK_DEPLOYMENT", "SCALE_DEPLOYMENT", "SCALE_STATEFULSET", "PATCH_WORKLOAD"];
 
 const input =
   "w-full text-xs px-2 py-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200";

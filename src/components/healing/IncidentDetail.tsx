@@ -10,6 +10,7 @@ import {
 } from "../../lib/tauri";
 import type { Incident, IncidentStatus } from "../../types/healing";
 import { ApprovalPanel } from "./ApprovalPanel";
+import { ChatPanel } from "./ChatPanel";
 import {
   ago, Bullets, btn, describeAction, errorText, fmtTime, HealingStatusBadge, RiskBadge, Section, SeverityLabel,
 } from "./shared";
@@ -360,6 +361,14 @@ export function IncidentDetail({ incident, onBack, onChanged }: {
               <div><b>Limitations</b><Bullets items={diag.result.limitations} /></div>
             </div>
           </div>
+          {diag.result.gitops_suggestion && (
+            <div className="mt-2 rounded border border-amber-300 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 p-2">
+              <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-200 mb-1">
+                GitOps fix (commit it yourself — direct changes may be reverted)
+              </div>
+              <Pre>{diag.result.gitops_suggestion}</Pre>
+            </div>
+          )}
           <p className="mt-2 text-[11px] text-slate-500">
             Sent {diag.context.chars.toLocaleString()} chars ({diag.context.sections.join(", ")}), {diag.context.redactions}{" "}
             values redacted. AI output is untrusted: only typed, allow-listed actions can become proposals.
@@ -368,6 +377,8 @@ export function IncidentDetail({ incident, onBack, onChanged }: {
       )}
 
       {proposal && <ApprovalPanel incident={incident} proposal={proposal} onChanged={onChanged} />}
+
+      <ChatPanel incident={incident} aiStatus={aiStatus} onChanged={onChanged} />
 
       <EvidenceSection incidentId={incident.id} />
 

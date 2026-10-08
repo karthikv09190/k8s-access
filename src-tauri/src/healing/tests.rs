@@ -49,6 +49,9 @@ struct FakeGateway {
     missing: Arc<Mutex<bool>>,
     gitops: Arc<Mutex<Option<String>>>,
     apply_delay_ms: u64,
+    applied_patches: Arc<Mutex<Vec<serde_json::Value>>>,
+    dry_runs: Arc<AtomicUsize>,
+    dry_run_error: Arc<Mutex<Option<String>>>,
 }
 
 impl FakeGateway {
@@ -139,10 +142,42 @@ impl ClusterGateway for FakeGateway {
         if let Some(e) = self.apply_error.lock().unwrap().clone() {
             return Err(e);
         }
+        if let Some(p) = permit.patch() {
+            self.applied_patches.lock().unwrap().push(p.clone());
+        }
         Ok(GatewayOutput {
             command: vec!["fake".into()],
             output: "ok".into(),
         })
+    }
+    async fn workload_object(
+        &self,
+        _b: &ClusterBinding,
+        _k: &str,
+        _n: &str,
+        _name: &str,
+    ) -> Result<serde_json::Value, String> {
+        Ok(
+            serde_json::json!({"kind":"Deployment","metadata":{"name":"payment-api"},"spec":{"template":{"spec":{
+            "terminationGracePeriodSeconds":30,
+            "containers":[{"name":"api","image":"repo/payment-api:1.2",
+                "livenessProbe":{"httpGet":{"path":"/health","port":8080},"initialDelaySeconds":10,"periodSeconds":10,"timeoutSeconds":1,"failureThreshold":3}}]}}}}),
+        )
+    }
+    async fn dry_run_patch(
+        &self,
+        _b: &ClusterBinding,
+        _k: &str,
+        _n: &str,
+        _name: &str,
+        patch: &serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        self.dry_runs.fetch_add(1, Ordering::SeqCst);
+        if let Some(e) = self.dry_run_error.lock().unwrap().clone() {
+            return Err(e);
+        }
+        let _ = patch;
+        Ok(serde_json::json!({}))
     }
 }
 
@@ -216,6 +251,7 @@ fn incident(ns: &str) -> Incident {
         verifications: vec![],
         history: vec![],
         last_error: None,
+        conversation: vec![],
     }
 }
 
@@ -1242,6 +1278,222 @@ mod ai {
         assert!(inc.diagnosis_error.unwrap().contains("invalid diagnosis"));
         assert_eq!(gw.mutations(), 0);
     }
+
+    // ── Discuss with AI ───────────────────────────────────────────────────────
+
+    fn chat_reply(action: Value) -> Value {
+        json!({"reply": "The liveness probe kills the app before Kafka join finishes; add a startupProbe.",
+            "suggested_action": action, "risk_level": "HIGH", "confidence": 0.8,
+            "evidence": ["startup took 64s, probe allows ~40s"], "gitops_suggestion": "values.yaml: startupProbe.failureThreshold: 18"})
+    }
+
+    fn startup_patch() -> Value {
+        json!({"type":"PATCH_WORKLOAD","namespace":"payments","kind":"Deployment","name":"payment-api","container":"api",
+            "changes":{"startup_probe":{"failure_threshold":18,"period_seconds":5},"liveness_probe":null,"resources":null}})
+    }
+
+    #[tokio::test]
+    async fn chat_never_mutates_and_redacts_operator_text() {
+        let (svc, gw, _) = setup();
+        let (inc, _) = svc.upsert_detected(incident("payments"));
+        let p = FakeProvider::returning(Ok(chat_reply(startup_patch())));
+        let inc = crate::healing::chat::send(
+            &svc,
+            &FakeReader,
+            Ok(&p),
+            &enabled(),
+            &inc.id,
+            "why does it restart? db password=hunter2",
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            inc.status,
+            IncidentStatus::Detected,
+            "chat does not change status"
+        );
+        assert_eq!(inc.conversation.len(), 2);
+        assert!(
+            !inc.conversation[0].text.contains("hunter2"),
+            "operator text redacted"
+        );
+        assert!(
+            !p.prompt.lock().unwrap().contains("hunter2"),
+            "secret never sent"
+        );
+        let reply = &inc.conversation[1];
+        assert!(matches!(
+            reply.suggested_action,
+            Some(HealingAction::PatchWorkload { .. })
+        ));
+        assert!(reply.gitops_suggestion.is_some());
+        assert!(inc.proposals.is_empty(), "suggestion is not a proposal yet");
+        assert_eq!(gw.mutations(), 0);
+        assert_eq!(gw.dry_runs.load(Ordering::SeqCst), 0);
+        assert!(svc
+            .audit_for(&inc.id)
+            .iter()
+            .any(|r| r.event == AuditEvent::ChatExchange));
+    }
+
+    #[tokio::test]
+    async fn chat_suggestion_becomes_patch_proposal_that_needs_approval() {
+        let (svc, gw, _) = setup();
+        let (inc, _) = svc.upsert_detected(incident("payments"));
+        let p = FakeProvider::returning(Ok(chat_reply(startup_patch())));
+        let inc =
+            crate::healing::chat::send(&svc, &FakeReader, Ok(&p), &enabled(), &inc.id, "fix it?")
+                .await
+                .unwrap();
+        let msg_id = inc.conversation[1].id.clone();
+
+        let inc = crate::healing::chat::propose_from_chat(&svc, &inc.id, &msg_id)
+            .await
+            .unwrap();
+        assert_eq!(inc.status, IncidentStatus::PendingApproval);
+        let prop = inc.active_proposal().unwrap().clone();
+        assert_eq!(prop.risk, RiskLevel::High);
+        let patch = prop.patch.clone().expect("patch sealed in proposal");
+        assert_eq!(
+            patch["spec"]["template"]["spec"]["containers"][0]["startupProbe"]["httpGet"]["path"],
+            "/health"
+        );
+        let dry = prop.dry_run.clone().unwrap();
+        assert!(dry.ok && dry.changes.iter().any(|c| c.path == "api.startupProbe"));
+        assert_eq!(gw.dry_runs.load(Ordering::SeqCst), 1);
+        assert_eq!(gw.mutations(), 0, "proposal + dry-run do not mutate");
+        assert_eq!(
+            inc.conversation[1].proposal_id.as_deref(),
+            Some(prop.id.as_str())
+        );
+        assert!(
+            crate::healing::chat::propose_from_chat(&svc, &inc.id, &msg_id)
+                .await
+                .is_err(),
+            "only once"
+        );
+
+        // Still requires approval (HIGH → explicit confirmation).
+        assert_eq!(
+            svc.execute_approved(&exec_req(&inc, &prop), &operator())
+                .await
+                .unwrap_err(),
+            HealingError::ApprovalMissing
+        );
+        let mut req = approve_req(&inc, &prop);
+        req.high_risk_confirmed = true;
+        svc.approve(&req, &operator()).unwrap();
+        svc.execute_approved(&exec_req(&inc, &prop), &operator())
+            .await
+            .unwrap();
+        assert_eq!(gw.mutations(), 1);
+        assert_eq!(
+            gw.applied_patches.lock().unwrap()[0],
+            patch,
+            "executes exactly the sealed patch"
+        );
+    }
+
+    #[tokio::test]
+    async fn rejected_dry_run_blocks_patch_proposal() {
+        let (svc, gw, _) = setup();
+        *gw.dry_run_error.lock().unwrap() = Some("admission webhook denied the request".into());
+        let (inc, _) = svc.upsert_detected(incident("payments"));
+        svc.begin_analysis(&inc.id).unwrap();
+        let mut d = restart_draft("payments");
+        d.action = crate::healing::diagnosis::parse_action(&startup_patch()).unwrap();
+        let p = svc.create_proposal(&inc.id, d).await.unwrap();
+        assert!(p.blocked_reason.unwrap().contains("dry-run"));
+        assert_eq!(
+            svc.incident(&inc.id).unwrap().status,
+            IncidentStatus::ManualInterventionRequired
+        );
+        assert_eq!(gw.mutations(), 0);
+    }
+
+    #[tokio::test]
+    async fn chat_rejects_unrelated_or_invalid_suggestions() {
+        let (svc, gw, _) = setup();
+        let (inc, _) = svc.upsert_detected(incident("payments"));
+        for action in [
+            json!({"type":"PATCH_WORKLOAD","namespace":"payments","kind":"Deployment","name":"ledger","container":"api","changes":{"image_tag":"2.0"}}),
+            json!({"type":"PATCH_WORKLOAD","namespace":"payments","kind":"Deployment","name":"payment-api","container":"api","changes":{"env":[{"name":"A","value":"b"}]}}),
+            json!({"type":"SHELL","command":"kubectl delete ns payments"}),
+        ] {
+            let p = FakeProvider::returning(Ok(chat_reply(action.clone())));
+            let inc =
+                crate::healing::chat::send(&svc, &FakeReader, Ok(&p), &enabled(), &inc.id, "ok?")
+                    .await
+                    .unwrap();
+            let last = inc.conversation.last().unwrap();
+            assert!(
+                last.suggested_action.is_none() && last.suggestion_error.is_some(),
+                "{action}"
+            );
+            assert!(
+                crate::healing::chat::propose_from_chat(&svc, &inc.id, &last.id)
+                    .await
+                    .is_err()
+            );
+        }
+        assert_eq!(gw.mutations(), 0);
+    }
+
+    #[tokio::test]
+    async fn chat_requires_ai_enabled() {
+        let (svc, _, _) = setup();
+        let (inc, _) = svc.upsert_detected(incident("payments"));
+        let p = FakeProvider::returning(Ok(chat_reply(Value::Null)));
+        assert!(crate::healing::chat::send(
+            &svc,
+            &FakeReader,
+            Ok(&p),
+            &AiConfig::default(),
+            &inc.id,
+            "hi"
+        )
+        .await
+        .is_err());
+        assert_eq!(p.calls(), 0);
+    }
+}
+
+#[tokio::test]
+async fn patch_rollback_targets_pre_change_revision() {
+    let (svc, gw, _) = setup();
+    let (inc, _) = svc.upsert_detected(incident("payments"));
+    svc.begin_analysis(&inc.id).unwrap();
+    let mut d = restart_draft("payments");
+    d.action = HealingAction::PatchWorkload {
+        namespace: "payments".into(),
+        kind: WorkloadKind::Deployment,
+        name: "payment-api".into(),
+        container: "api".into(),
+        changes: WorkloadPatch {
+            termination_grace_period_seconds: Some(60),
+            ..Default::default()
+        },
+    };
+    let p = svc.create_proposal(&inc.id, d).await.unwrap();
+    let inc = svc.incident(&inc.id).unwrap();
+    let mut req = approve_req(&inc, &p);
+    req.high_risk_confirmed = true;
+    svc.approve(&req, &operator()).unwrap();
+    *gw.healthy.lock().unwrap() = false;
+    svc.execute_approved(&exec_req(&inc, &p), &operator())
+        .await
+        .unwrap();
+    svc.verify(&inc.id).await.unwrap();
+    let rb = svc.propose_rollback(&inc.id).await.unwrap();
+    assert_eq!(
+        rb.action,
+        HealingAction::RollbackDeployment {
+            namespace: "payments".into(),
+            name: "payment-api".into(),
+            to_revision: 7
+        }
+    );
+    assert_eq!(gw.mutations(), 1, "rollback is only proposed");
 }
 
 // ── Structural proof: a single mutation entry point ───────────────────────────

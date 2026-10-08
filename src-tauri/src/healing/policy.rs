@@ -49,6 +49,7 @@ impl Default for HealingPolicy {
                 ActionType::RollbackDeployment,
                 ActionType::ScaleDeployment,
                 ActionType::ScaleStatefulset,
+                ActionType::PatchWorkload,
             ],
             max_risk: RiskLevel::High,
             max_replicas: 50,
@@ -156,6 +157,12 @@ impl HealingPolicy {
                 }
             }
             HealingAction::RestartPod { .. } | HealingAction::RolloutRestart { .. } => {}
+            HealingAction::PatchWorkload {
+                container, changes, ..
+            } => {
+                super::patch::validate(container, changes)
+                    .map_err(HealingError::PolicyViolation)?;
+            }
         }
         Ok(())
     }

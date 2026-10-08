@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, GitBranch, Loader2, ShieldAlert, ShieldCheck, XCircle } from "lucide-react";
 import { useAppStore } from "../../store/app";
 import { approveHealing, executeApprovedHealing, getHealingCommandPreview, rejectHealing } from "../../lib/tauri";
-import type { HealingProposal, Incident, StateSnapshot } from "../../types/healing";
+import type { DryRunResult, HealingProposal, Incident, StateSnapshot } from "../../types/healing";
 import { actionTarget, Bullets, btn, describeAction, errorText, fmtTime, RiskBadge, Section, until } from "./shared";
 
 function StateCompare({ current, proposed }: { current: StateSnapshot; proposed: StateSnapshot }) {
@@ -33,6 +33,25 @@ function StateCompare({ current, proposed }: { current: StateSnapshot; proposed:
         ))}
       </tbody>
     </table>
+  );
+}
+
+function PatchDiff({ dryRun }: { dryRun: DryRunResult }) {
+  return (
+    <div className="space-y-1">
+      <p className={dryRun.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>
+        {dryRun.ok
+          ? "Server dry-run accepted the patch (validated by the API server and admission webhooks; nothing was saved)."
+          : `Server dry-run rejected the patch: ${dryRun.error}`}
+      </p>
+      {dryRun.changes.map((c) => (
+        <div key={c.path} className="rounded border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="px-2 py-1 bg-slate-100 dark:bg-slate-900 font-mono text-[11px] font-semibold">{c.path}</div>
+          <pre className="px-2 py-1 font-mono text-[11px] whitespace-pre-wrap break-all bg-red-50 text-red-800 dark:bg-red-500/10 dark:text-red-300">- {c.before}</pre>
+          <pre className="px-2 py-1 font-mono text-[11px] whitespace-pre-wrap break-all bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-300">+ {c.after}</pre>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -199,6 +218,13 @@ export function ApprovalPanel({ incident, proposal, onChanged }: {
           <Field label="Current vs proposed state">
             <StateCompare current={proposal.currentState} proposed={proposal.proposedState} />
           </Field>
+          {proposal.dryRun && (
+            <div className="lg:col-span-2">
+              <Field label="Exact field changes (before → after)">
+                <PatchDiff dryRun={proposal.dryRun} />
+              </Field>
+            </div>
+          )}
           <Field label="Expected impact">
             <p>{proposal.expectedImpact}</p>
           </Field>
@@ -311,7 +337,11 @@ export function ApprovalPanel({ incident, proposal, onChanged }: {
             <pre className="p-2 rounded bg-slate-100 dark:bg-slate-950 font-mono text-[11px] whitespace-pre-wrap break-all">
               {command?.join(" ") ?? describeAction(proposal.action)}
             </pre>
-            <StateCompare current={proposal.currentState} proposed={proposal.proposedState} />
+            {proposal.dryRun ? (
+              <div className="max-h-64 overflow-auto"><PatchDiff dryRun={proposal.dryRun} /></div>
+            ) : (
+              <StateCompare current={proposal.currentState} proposed={proposal.proposedState} />
+            )}
             <div className="flex justify-end gap-2 pt-1">
               <button className={`${btn.base} ${btn.neutral}`} disabled={busy !== null} onClick={() => setConfirming(false)}>
                 Cancel

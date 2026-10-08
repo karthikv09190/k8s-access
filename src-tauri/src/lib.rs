@@ -68,7 +68,8 @@ use commands::{
         propose_healing_rollback, reject_healing, set_healing_policy, HealingState,
         analyze_healing_incident, get_healing_ai_status, preview_healing_ai_context,
         scan_healing_incidents, set_healing_ai_config,
-        delete_claude_token, save_claude_token, test_claude_auth,
+        delete_claude_token, save_claude_token, test_claude_auth, send_healing_chat,
+        propose_healing_from_chat,
     },
 };
 use tauri::{Emitter, Manager};
@@ -218,6 +219,8 @@ pub fn run() {
             save_claude_token,
             delete_claude_token,
             test_claude_auth,
+            send_healing_chat,
+            propose_healing_from_chat,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

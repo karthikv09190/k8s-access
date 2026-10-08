@@ -213,7 +213,11 @@ pub async fn get_healing_command_preview(
         .proposal(&proposal_id)
         .ok_or_else(|| format!("Proposal {} not found for this incident.", proposal_id))?;
     let mut argv = vec!["kubectl".to_string()];
-    argv.extend(kubectl_argv(&p.binding.context, &p.action));
+    argv.extend(kubectl_argv(
+        &p.binding.context,
+        &p.action,
+        p.patch.as_ref(),
+    ));
     Ok(argv)
 }
 
@@ -554,4 +558,48 @@ pub async fn set_healing_ai_config(
     ));
     *state.ai.write().unwrap() = config;
     Ok(())
+}
+
+// ── Discuss with AI ──────────────────────────────────────────────────────────
+
+/// One chat turn about an incident. Never changes the cluster or the
+/// incident status; a suggested fix becomes a proposal only via
+/// `propose_healing_from_chat`, and then still needs approval.
+#[tauri::command]
+pub async fn send_healing_chat(
+    incident_id: String,
+    message: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Incident, String> {
+    let cfg = state.ai_config();
+    let provider = stored_token(&cfg).and_then(|t| ClaudeCliProvider::from_config(&cfg, t));
+    let inc = crate::healing::chat::send(
+        &state.service,
+        &KubectlReader,
+        provider.as_ref().map_err(Clone::clone),
+        &cfg,
+        &incident_id,
+        &message,
+    )
+    .await?;
+    emit_updated(&app, &inc);
+    Ok(inc)
+}
+
+/// Turns a chat suggestion into a PENDING_APPROVAL proposal (validated,
+/// server dry-run for patches, sealed). Executes nothing.
+#[tauri::command]
+pub async fn propose_healing_from_chat(
+    incident_id: String,
+    message_id: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Incident, String> {
+    let result =
+        crate::healing::chat::propose_from_chat(&state.service, &incident_id, &message_id).await;
+    if let Ok(inc) = state.service.incident(&incident_id) {
+        emit_updated(&app, &inc);
+    }
+    Ok(result?)
 }

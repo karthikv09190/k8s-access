@@ -139,6 +139,40 @@ Use **Load evidence** in an incident to see exactly what would be sent.
 | `ROLLOUT_RESTART` (Deployment, StatefulSet, DaemonSet) | MEDIUM | existing `restart_resource` |
 | `ROLLBACK_DEPLOYMENT` | HIGH | existing `rollback_rollout` |
 | `SCALE_DEPLOYMENT`, `SCALE_STATEFULSET` (1..maxReplicas) | HIGH | existing `scale_resource` |
+| `PATCH_WORKLOAD` (see below) | HIGH | `kubectl patch --type strategic` with the sealed patch |
+
+### PATCH_WORKLOAD
+
+Changes **only** these fields of **one named container** (plus the pod's grace period):
+
+- liveness / readiness / startup probe timings and thresholds — a new `startupProbe` reuses the
+  liveness handler; AI never supplies a probe command or URL;
+- CPU / memory requests and limits (validated quantities, ≤ 64 cores / 256Gi, request ≤ limit);
+- `terminationGracePeriodSeconds` (≤ 3600) and a simple preStop `sleep N` (≤ 600, < grace period);
+- image tag within the container's current repository.
+
+The AI returns typed values (`WorkloadPatch`, `deny_unknown_fields`); the backend builds the
+strategic-merge patch from the live object (`healing/patch.rs`). At proposal time the patch is checked
+with `kubectl patch --dry-run=server` (validated and admitted by the API server, nothing persisted) and
+the per-field before → after diff is shown. A rejected dry run blocks the proposal. The exact patch is
+stored in the proposal (covered by the SHA-256 hash) and is what executes after approval. Rollback for
+Deployments: back to the pre-change revision (new approval).
+
+## Discuss with AI
+
+Each incident has a chat panel using the same sanitized context as Analyze. Operator messages are
+redacted before storage/sending; history is kept with the incident and audited (`CHAT_EXCHANGE`).
+The AI may attach a typed **suggested fix** and a **GitOps suggestion** (Helm values/manifest change to
+commit yourself). Chat never changes the cluster or the incident status. "Create proposal for approval"
+is a separate explicit step that validates the suggestion (related resource, allow-list, dry run) and
+creates a PENDING_APPROVAL proposal — which still needs APPROVE HEALING.
+
+## Claude Code authorization
+
+AI calls use the local `claude` CLI either with the machine's own login (`CLI_LOGIN`, default) or with a
+long-lived token from `claude setup-token` stored in the macOS Keychain (`KEYCHAIN_TOKEN`). The token is
+passed only via the child process environment (`CLAUDE_CODE_OAUTH_TOKEN`), never logged, saved to
+files, or returned to the UI. "Test authentication" makes one minimal call (haiku, $0.05 cap).
 
 - A proposal's risk is `max(AI-declared risk, base risk)`.
 - CRITICAL actions are never executable ("Manual intervention required", no approve button).
@@ -303,7 +337,7 @@ There are no automatic Git commits or pushes.
 
 ```
 cd src-tauri
-cargo test --lib                                   # 79 tests incl. approval/security boundary
+cargo test --lib                                   # 99 tests incl. approval/security boundary
 cargo test --lib live_claude_cli -- --ignored      # optional: real claude CLI, synthetic incident, no cluster
 ```
 

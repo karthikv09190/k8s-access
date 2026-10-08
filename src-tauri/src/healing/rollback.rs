@@ -45,6 +45,25 @@ pub fn rollback_action(
         HealingAction::RestartPod { .. } => {
             Err("a deleted pod cannot be restored; its controller already replaced it".into())
         }
+        // A template patch creates a new Deployment revision; roll back to the
+        // revision captured before the patch.
+        HealingAction::PatchWorkload {
+            namespace,
+            kind: WorkloadKind::Deployment,
+            name,
+            ..
+        } => {
+            let rev = pre.revision.ok_or("pre-change revision was not captured")?;
+            Ok(HealingAction::RollbackDeployment {
+                namespace: namespace.clone(),
+                name: name.clone(),
+                to_revision: rev,
+            })
+        }
+        HealingAction::PatchWorkload { kind, .. } => Err(format!(
+            "{} patch has no revision-based rollback; revert the fields manually",
+            kind.as_str()
+        )),
     }
 }
 

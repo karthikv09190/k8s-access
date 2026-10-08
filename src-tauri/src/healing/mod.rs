@@ -4,6 +4,7 @@
 
 pub mod analysis;
 pub mod audit;
+pub mod chat;
 pub mod context;
 pub mod credentials;
 pub mod detector;
@@ -12,6 +13,7 @@ pub mod error;
 pub mod gateway;
 pub mod model;
 pub mod notify;
+pub mod patch;
 pub mod policy;
 pub mod proposal;
 pub mod provider;

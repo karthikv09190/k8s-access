@@ -78,7 +78,29 @@ export function actionTarget(a: HealingAction): string {
       return `Deployment/${a.name}`;
     case "SCALE_STATEFULSET":
       return `StatefulSet/${a.name}`;
+    case "PATCH_WORKLOAD":
+      return `${a.kind}/${a.name}`;
   }
+}
+
+function patchSummary(c: import("../../types/healing").WorkloadPatch): string {
+  const parts: string[] = [];
+  const probe = (n: string, p?: Record<string, number | undefined>) => {
+    if (!p) return;
+    const kv = Object.entries(p).filter(([, v]) => v !== undefined && v !== null).map(([k, v]) => `${k}=${v}`);
+    parts.push(`${n} (${kv.join(", ")})`);
+  };
+  probe("livenessProbe", c.liveness_probe as Record<string, number | undefined> | undefined);
+  probe("readinessProbe", c.readiness_probe as Record<string, number | undefined> | undefined);
+  probe("startupProbe", c.startup_probe as Record<string, number | undefined> | undefined);
+  if (c.resources) {
+    const r = Object.entries(c.resources).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`);
+    parts.push(`resources (${r.join(", ")})`);
+  }
+  if (c.termination_grace_period_seconds != null) parts.push(`terminationGracePeriodSeconds=${c.termination_grace_period_seconds}`);
+  if (c.pre_stop_sleep_seconds != null) parts.push(`preStop sleep=${c.pre_stop_sleep_seconds}s`);
+  if (c.image_tag) parts.push(`image tag=${c.image_tag}`);
+  return parts.join("; ");
 }
 
 export function describeAction(a: HealingAction): string {
@@ -93,6 +115,8 @@ export function describeAction(a: HealingAction): string {
       return `Scale Deployment/${a.name} in ${a.namespace} to ${a.replicas} replicas`;
     case "SCALE_STATEFULSET":
       return `Scale StatefulSet/${a.name} in ${a.namespace} to ${a.replicas} replicas`;
+    case "PATCH_WORKLOAD":
+      return `Patch ${a.kind}/${a.name} in ${a.namespace}, container ${a.container}: ${patchSummary(a.changes)}`;
   }
 }
 
