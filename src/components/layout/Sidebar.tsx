@@ -1,21 +1,38 @@
 import {
+  Activity,
+  AlertTriangle,
   Box,
+  DollarSign,
+  GitBranch,
+  Share2,
   ChevronDown,
   ChevronRight,
   Cpu,
   Database,
   FileCode2,
+  Gauge,
   GitCompare,
   Globe,
+  HeartPulse,
+  HardDrive,
   Key,
   Layers,
   LayoutDashboard,
   Lock,
   Network,
   Package,
+  Plug,
   Server,
   Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Sliders,
   Timer,
+  TrendingUp,
+  Eye,
+  Boxes,
+  Webhook,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { useAppStore } from "../../store/app";
@@ -38,6 +55,9 @@ const NAV: NavGroup[] = [
     items: [
       { label: "Dashboard", icon: <LayoutDashboard size={14} />, page: "dashboard" },
       { label: "Nodes", icon: <Server size={14} />, page: "nodes" },
+      { label: "Events", icon: <Activity size={14} />, page: "events" },
+      { label: "Problem Pods", icon: <AlertTriangle size={14} />, page: "problemPods" },
+      { label: "Self-Healing", icon: <HeartPulse size={14} />, page: "selfHealing" },
     ],
   },
   {
@@ -50,6 +70,8 @@ const NAV: NavGroup[] = [
       { label: "ReplicaSets", icon: <Package size={14} />, page: "replicasets" },
       { label: "Jobs", icon: <Timer size={14} />, page: "jobs" },
       { label: "CronJobs", icon: <Timer size={14} />, page: "cronjobs" },
+      { label: "HPAs", icon: <TrendingUp size={14} />, page: "hpas" },
+      { label: "PodDisruptionBudgets", icon: <ShieldAlert size={14} />, page: "pdbs" },
     ],
   },
   {
@@ -57,6 +79,8 @@ const NAV: NavGroup[] = [
     items: [
       { label: "Services", icon: <Network size={14} />, page: "services" },
       { label: "Ingresses", icon: <Globe size={14} />, page: "ingresses" },
+      { label: "NetworkPolicies", icon: <ShieldCheck size={14} />, page: "networkpolicies" },
+      { label: "Endpoints", icon: <Plug size={14} />, page: "endpoints" },
     ],
   },
   {
@@ -66,11 +90,15 @@ const NAV: NavGroup[] = [
       { label: "Secrets", icon: <Key size={14} />, page: "secrets" },
       { label: "PersistentVolumeClaims", icon: <Database size={14} />, page: "pvcs" },
       { label: "PersistentVolumes", icon: <Database size={14} />, page: "pvs" },
+      { label: "StorageClasses", icon: <HardDrive size={14} />, page: "storageclasses" },
+      { label: "ResourceQuotas", icon: <Gauge size={14} />, page: "resourcequotas" },
+      { label: "LimitRanges", icon: <Sliders size={14} />, page: "limitranges" },
     ],
   },
   {
     label: "RBAC",
     items: [
+      { label: "RBAC Visualizer", icon: <Eye size={14} />, page: "rbac" },
       { label: "ServiceAccounts", icon: <Shield size={14} />, page: "serviceaccounts" },
       { label: "Roles", icon: <Lock size={14} />, page: "roles" },
       { label: "RoleBindings", icon: <Lock size={14} />, page: "rolebindings" },
@@ -82,6 +110,13 @@ const NAV: NavGroup[] = [
     label: "Tools",
     items: [
       { label: "Compare Clusters", icon: <GitCompare size={14} />, page: "compare" },
+      { label: "Helm Releases", icon: <Package size={14} />, page: "helm" },
+      { label: "Resource Graph", icon: <Share2 size={14} />, page: "resourceGraph" },
+      { label: "GitOps (ArgoCD)", icon: <GitBranch size={14} />, page: "gitops" },
+      { label: "Cost Estimation", icon: <DollarSign size={14} />, page: "namespaceCost" },
+      { label: "CRD Browser", icon: <Boxes size={14} />, page: "crdBrowser" },
+      { label: "Webhook Configs", icon: <Webhook size={14} />, page: "webhooks" },
+      { label: "Kubeconfig", icon: <Settings size={14} />, page: "kubeconfig" },
     ],
   },
 ];
@@ -106,7 +141,7 @@ function NavGroupSection({
     <div className="mb-1">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 w-full px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-400"
+        className="flex items-center gap-1 w-full px-3 py-1 text-xs font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-wider hover:text-slate-600 dark:hover:text-slate-400"
       >
         {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
         {group.label}
@@ -120,8 +155,8 @@ function NavGroupSection({
               className={cn(
                 "flex items-center gap-2 w-full px-4 py-1.5 text-sm rounded-md mx-1 text-left",
                 currentPage === item.page
-                  ? "bg-blue-600/20 text-blue-400 border-l-2 border-blue-500"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                  ? "bg-blue-100 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 border-l-2 border-blue-500"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5"
               )}
             >
               {item.icon}
@@ -140,13 +175,13 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   if (collapsed) return null;
 
   return (
-    <aside className="w-56 shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto">
-      <div className="p-3 border-b border-slate-800">
+    <aside className="w-56 shrink-0 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col overflow-y-auto">
+      <div className="p-3 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
             K
           </div>
-          <span className="text-sm font-semibold text-slate-100">K8s Manager</span>
+          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">K8s Manager</span>
         </div>
       </div>
       <nav className="flex-1 py-3 px-1">

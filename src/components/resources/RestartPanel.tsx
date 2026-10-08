@@ -29,12 +29,12 @@ export function RestartPanel({ context, namespace, kind, name }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 p-4 gap-4">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950 p-4 gap-4">
       <div>
-        <p className="text-xs text-slate-400 mb-1 font-semibold">Rollout Restart</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-semibold">Rollout Restart</p>
         <p className="text-xs text-slate-500 leading-5">
           Triggers a rolling restart of{" "}
-          <span className="font-mono text-slate-300">
+          <span className="font-mono text-slate-700 dark:text-slate-300">
             {kind}/{name}
           </span>
           . Pods will be replaced one by one with zero downtime.
@@ -65,7 +65,7 @@ export function RestartPanel({ context, namespace, kind, name }: Props) {
             </button>
             <button
               onClick={() => setConfirming(false)}
-              className="text-xs px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300"
+              className="text-xs px-3 py-1 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300"
             >
               Cancel
             </button>
@@ -74,7 +74,7 @@ export function RestartPanel({ context, namespace, kind, name }: Props) {
       )}
 
       {msg && (
-        <p className={`text-xs ${msg.ok ? "text-green-400" : "text-red-400"}`}>{msg.text}</p>
+        <p className={`text-xs ${msg.ok ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{msg.text}</p>
       )}
     </div>
   );

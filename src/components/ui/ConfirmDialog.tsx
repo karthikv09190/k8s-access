@@ -21,7 +21,9 @@ export function ConfirmDialog({
       : "bg-orange-600 hover:bg-orange-500";
   const textClass = variant === "danger" ? "text-red-300" : "text-orange-300";
   const borderClass =
-    variant === "danger" ? "border-red-500/40 bg-red-500/5" : "border-orange-500/40 bg-orange-500/5";
+    variant === "danger"
+      ? "border-red-500/40 bg-red-50 dark:bg-red-500/5"
+      : "border-orange-500/40 bg-orange-50 dark:bg-orange-500/5";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -33,7 +35,7 @@ export function ConfirmDialog({
         <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}
-            className="text-xs px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 text-slate-300"
+            className="text-xs px-3 py-1.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300"
           >
             Cancel
           </button>

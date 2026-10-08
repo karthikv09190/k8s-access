@@ -1,14 +1,18 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAppStore } from "../store/app";
 import { ResourceTable, type Column } from "../components/resources/ResourceTable";
 import { ResourceActionsPanel, type ResourceTab } from "../components/resources/ResourceActionsPanel";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { RefreshSelect } from "../components/ui/RefreshSelect";
+import { CreateResourceModal } from "../components/resources/CreateResourceModal";
+import { useKeyboardNav } from "../hooks/useKeyboardNav";
 import { age } from "../lib/utils";
 import type { InvokeArgs } from "@tauri-apps/api/core";
 import { invoke } from "@tauri-apps/api/core";
 import { deleteResource } from "../lib/tauri";
-import { Search, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
+import { ExportMenu } from "../components/resources/ExportMenu";
 
 interface GenericResourcePageProps {
   title: string;
@@ -34,6 +38,9 @@ export function GenericResourcePage({
   const [selected, setSelected] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [pendingDelete, setPendingDelete] = useState<any | null>(null);
+  const [refreshInterval, setRefreshInterval] = useState(30_000);
+  const [showCreate, setShowCreate] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const queryArgs: Record<string, string | undefined> = {
     context: activeContext,
@@ -44,7 +51,7 @@ export function GenericResourcePage({
     queryKey: [invokeCmd, activeContext, activeNamespace],
     queryFn: () => invoke<unknown[]>(invokeCmd, queryArgs as InvokeArgs),
     enabled: !!activeContext,
-    refetchInterval: 30000,
+    refetchInterval: refreshInterval || false,
   });
 
   const resources = data as any[];
@@ -101,6 +108,16 @@ export function GenericResourcePage({
     setPendingDelete(null);
   };
 
+  useKeyboardNav({
+    items: filtered,
+    selectedKey: selected,
+    getKey: (r) => r.metadata?.uid ?? r.metadata?.name,
+    onSelect: (r) => setSelected(r.metadata?.name),
+    onClose: () => setSelected(null),
+    onDelete: supportsDelete ? handleDelete : undefined,
+    searchRef,
+  });
+
   const selectedResource = resources.find((r) => r.metadata?.name === selected);
 
   return (
@@ -114,8 +131,8 @@ export function GenericResourcePage({
         />
       )}
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-800 shrink-0">
-        <h2 className="text-sm font-semibold text-slate-200 shrink-0">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200 shrink-0">
           {title}{" "}
           <span className="text-slate-500 font-normal">
             ({search ? `${filtered.length}/` : ""}{resources.length})
@@ -125,11 +142,12 @@ export function GenericResourcePage({
         <div className="flex-1 relative max-w-xs">
           <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
+            ref={searchRef}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name..."
-            className="w-full bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded pl-6 pr-6 py-1 focus:outline-none focus:border-blue-500"
+            className="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded pl-6 pr-6 py-1 focus:outline-none focus:border-blue-500"
           />
           {search && (
             <button
@@ -140,7 +158,34 @@ export function GenericResourcePage({
             </button>
           )}
         </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <RefreshSelect value={refreshInterval} onChange={setRefreshInterval} />
+          <ExportMenu
+            title={title}
+            items={filtered}
+            context={activeContext}
+            namespace={activeNamespace || undefined}
+            namespaced={namespaced}
+          />
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1 text-xs px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white shrink-0"
+          >
+            <Plus size={11} />
+            Create
+          </button>
+        </div>
       </div>
+
+      {showCreate && (
+        <CreateResourceModal
+          context={activeContext}
+          namespace={activeNamespace || "default"}
+          onClose={() => setShowCreate(false)}
+          invalidateKey={invokeCmd}
+        />
+      )}
 
       {/* Content: table + side panel */}
       <div className="flex-1 overflow-hidden flex flex-row">
@@ -160,7 +205,7 @@ export function GenericResourcePage({
 
         {/* Right side panel */}
         {selected && selectedResource && (
-          <div className="w-[440px] shrink-0 border-l border-slate-800 overflow-hidden flex flex-col">
+          <div className="w-[440px] shrink-0 border-l border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
             <ResourceActionsPanel
               context={activeContext}
               namespace={selectedResource.metadata?.namespace}

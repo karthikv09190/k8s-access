@@ -4,6 +4,18 @@ import type {
   CompareResult,
   KubeContext,
 } from "../types/k8s";
+import type {
+  AiConfig,
+  AiContextPreview,
+  AiStatus,
+  AuditRecord,
+  ExecutionRecord,
+  HealingPolicy,
+  HealingProposal,
+  HealingStats,
+  Incident,
+  ScanResult,
+} from "../types/healing";
 
 // ── Clusters ──────────────────────────────────────────────────────────────────
 export interface KubectlStatus {
@@ -81,6 +93,27 @@ export const listClusterroles = (args: ResourceArgs) =>
 export const listClusterrolebindings = (args: ResourceArgs) =>
   invoke<unknown[]>("list_clusterrolebindings", args);
 
+export const listHpas = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_hpas", args);
+
+export const listPdbs = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_pdbs", args);
+
+export const listNetworkpolicies = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_networkpolicies", args);
+
+export const listResourcequotas = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_resourcequotas", args);
+
+export const listLimitranges = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_limitranges", args);
+
+export const listStorageclasses = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_storageclasses", args);
+
+export const listEndpoints = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_endpoints", args);
+
 export const getResourceYaml = (args: {
   context: string;
   namespace?: string;
@@ -111,6 +144,38 @@ export const getPodContainers = (args: {
   podName: string;
 }) => invoke<string[]>("get_pod_containers", args);
 
+export const startLogStream = (args: {
+  context: string;
+  namespace: string;
+  podName: string;
+  container?: string;
+  tailLines?: number;
+}) => invoke<string>("start_log_stream", args);
+
+export const stopLogStream = (streamId: string) =>
+  invoke<void>("stop_log_stream", { streamId });
+
+// ── Terminal ──────────────────────────────────────────────────────────────────
+export const startTerminal = (args: {
+  context: string;
+  namespace: string;
+  podName: string;
+  container?: string;
+  shell?: string;
+}) => invoke<string>("start_terminal", args);
+
+export const writeTerminal = (args: { terminalId: string; data: string }) =>
+  invoke<void>("write_terminal", args);
+
+export const resizeTerminal = (args: {
+  terminalId: string;
+  cols: number;
+  rows: number;
+}) => invoke<void>("resize_terminal", args);
+
+export const closeTerminal = (terminalId: string) =>
+  invoke<void>("close_terminal", { terminalId });
+
 // ── Compare ───────────────────────────────────────────────────────────────────
 export const compareClusters = (args: {
   leftContext: string;
@@ -118,6 +183,29 @@ export const compareClusters = (args: {
   namespace: string;
   resourceKinds: string[];
 }) => invoke<CompareResult>("compare_clusters", args);
+
+// ── Events ────────────────────────────────────────────────────────────────────
+export interface K8sEvent {
+  namespace: string;
+  name: string;
+  eventType: string;
+  reason: string;
+  message: string;
+  objectKind: string;
+  objectName: string;
+  count: number;
+  firstTimestamp: string | null;
+  lastTimestamp: string | null;
+  sourceComponent: string;
+  sourceHost: string;
+}
+
+export const listEvents = (args: {
+  context: string;
+  namespace?: string;
+  involvedObjectKind?: string;
+  involvedObjectName?: string;
+}) => invoke<K8sEvent[]>("list_events", args);
 
 // ── Exec ──────────────────────────────────────────────────────────────────────
 export const execPodCommand = (args: {
@@ -131,7 +219,36 @@ export const execPodCommand = (args: {
 export const applyResourceYaml = (args: {
   context: string;
   yaml: string;
+  dryRun?: boolean;
 }) => invoke<string>("apply_resource_yaml", args);
+
+// ── Rollout ───────────────────────────────────────────────────────────────────
+export interface RolloutRevision {
+  revision: number;
+  changeCause: string;
+}
+
+export const getRolloutHistory = (args: {
+  context: string;
+  namespace: string;
+  kind: string;
+  name: string;
+}) => invoke<RolloutRevision[]>("get_rollout_history", args);
+
+export const rollbackRollout = (args: {
+  context: string;
+  namespace: string;
+  kind: string;
+  name: string;
+  revision: number;
+}) => invoke<string>("rollback_rollout", args);
+
+export const getRolloutStatus = (args: {
+  context: string;
+  namespace: string;
+  kind: string;
+  name: string;
+}) => invoke<string>("get_rollout_status", args);
 
 export const describeResource = (args: {
   context: string;
@@ -219,3 +336,162 @@ export const getNodeMetrics = (context: string) =>
 
 export const getPodMetrics = (args: { context: string; namespace?: string }) =>
   invoke<PodMetrics[]>("get_pod_metrics", args);
+
+// ── Node Operations ────────────────────────────────────────────────────────────
+export const cordonNode = (args: { context: string; name: string }) =>
+  invoke<string>("cordon_node", args);
+
+export const uncordonNode = (args: { context: string; name: string }) =>
+  invoke<string>("uncordon_node", args);
+
+export const drainNode = (args: { context: string; name: string }) =>
+  invoke<string>("drain_node", args);
+
+// ── Helm ───────────────────────────────────────────────────────────────────────
+export interface HelmRelease {
+  name: string;
+  namespace: string;
+  revision: string;
+  updated: string;
+  status: string;
+  chart: string;
+  appVersion: string;
+}
+
+export const listHelmReleases = (context: string) =>
+  invoke<HelmRelease[]>("list_helm_releases", { context });
+
+export const uninstallHelmRelease = (args: {
+  context: string;
+  namespace: string;
+  name: string;
+}) => invoke<string>("uninstall_helm_release", args);
+
+// ── GitOps ────────────────────────────────────────────────────────────────────
+export interface ArgoApp {
+  name: string; namespace: string; project: string;
+  repoUrl: string; path: string; targetRevision: string;
+  destNamespace: string; syncStatus: string; healthStatus: string;
+  lastSyncedAt: string; images: string[]; message: string;
+}
+export const listArgoApps = (context: string) =>
+  invoke<ArgoApp[]>("list_argo_apps", { context });
+export const syncArgoApp = (args: { context: string; namespace: string; name: string }) =>
+  invoke<string>("sync_argo_app", args);
+
+// ── CRDs ──────────────────────────────────────────────────────────────────────
+export interface CrdInfo {
+  name: string; group: string; kind: string; plural: string;
+  scope: string; versions: string[]; established: boolean;
+}
+export const listCrds = (context: string) =>
+  invoke<CrdInfo[]>("list_crds", { context });
+export const listCustomResources = (args: { context: string; crdName: string; namespace?: string }) =>
+  invoke<string>("list_custom_resources", args);
+
+// ── Webhooks ──────────────────────────────────────────────────────────────────
+export const listMutatingwebhookconfigurations = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_mutatingwebhookconfigurations", args);
+export const listValidatingwebhookconfigurations = (args: ResourceArgs) =>
+  invoke<unknown[]>("list_validatingwebhookconfigurations", args);
+
+// ── Kubeconfig ────────────────────────────────────────────────────────────────
+export const renameContext = (args: { oldName: string; newName: string }) =>
+  invoke<void>("rename_context", args);
+export const deleteContext = (name: string) =>
+  invoke<void>("delete_context", { name });
+export const setCurrentContext = (name: string) =>
+  invoke<void>("set_current_context", { name });
+export const testContextConnection = (context: string) =>
+  invoke<string>("test_context_connection", { context });
+export const importKubeconfig = (yamlContent: string) =>
+  invoke<string[]>("import_kubeconfig", { yamlContent });
+
+// ── Watch / Alerts ────────────────────────────────────────────────────────────
+export const startClusterWatch = (context: string) =>
+  invoke<void>("start_cluster_watch", { context });
+export const stopClusterWatch = (context: string) =>
+  invoke<void>("stop_cluster_watch", { context });
+export const clearClusterAlerts = () =>
+  invoke<void>("clear_cluster_alerts");
+
+// ── kubectl Command Palette ───────────────────────────────────────────────────
+export const runKubectlCommand = (args: {
+  context: string;
+  namespace: string;
+  args: string[];
+}) => invoke<string>("run_kubectl_command", args);
+
+// ── Export ────────────────────────────────────────────────────────────────────
+export const getNamespaceYamlBundle = (args: {
+  context: string;
+  namespace: string;
+}) => invoke<string>("get_namespace_yaml_bundle", args);
+
+// ── Self-Healing ──────────────────────────────────────────────────────────────
+// Every mutation is gated in Rust (approval, hash, cluster, expiry, policy,
+// pre-flight). These wrappers only carry the operator's explicit choices.
+export const scanHealingIncidents = (context: string) =>
+  invoke<ScanResult>("scan_healing_incidents", { context });
+
+export const getHealingIncidents = (context?: string) =>
+  invoke<Incident[]>("get_healing_incidents", { context: context ?? null });
+
+export const getHealingIncident = (id: string) =>
+  invoke<Incident>("get_healing_incident", { id });
+
+export const getHealingStats = (context?: string) =>
+  invoke<HealingStats>("get_healing_stats", { context: context ?? null });
+
+export const getHealingAudit = (incidentId?: string) =>
+  invoke<AuditRecord[]>("get_healing_audit", { incidentId: incidentId ?? null });
+
+export const getHealingCommandPreview = (incidentId: string, proposalId: string) =>
+  invoke<string[]>("get_healing_command_preview", { incidentId, proposalId });
+
+export const analyzeHealingIncident = (incidentId: string, force = false) =>
+  invoke<Incident>("analyze_healing_incident", { incidentId, force });
+
+export const previewHealingAiContext = (incidentId: string) =>
+  invoke<AiContextPreview>("preview_healing_ai_context", { incidentId });
+
+export const approveHealing = (request: {
+  incidentId: string;
+  proposalId: string;
+  proposalHash: string;
+  context: string;
+  highRiskConfirmed: boolean;
+}) => invoke<Incident>("approve_healing", { request });
+
+export const rejectHealing = (request: {
+  incidentId: string;
+  proposalId: string;
+  reason: string | null;
+}) => invoke<Incident>("reject_healing", { request });
+
+export const executeApprovedHealing = (request: {
+  incidentId: string;
+  proposalId: string;
+  proposalHash: string;
+  context: string;
+}) => invoke<ExecutionRecord>("execute_approved_healing", { request });
+
+export const proposeHealingRollback = (incidentId: string) =>
+  invoke<HealingProposal>("propose_healing_rollback", { incidentId });
+
+export const getHealingPolicy = () => invoke<HealingPolicy>("get_healing_policy");
+
+export const setHealingPolicy = (policy: HealingPolicy) =>
+  invoke<void>("set_healing_policy", { policy });
+
+export const getHealingAiStatus = () => invoke<AiStatus>("get_healing_ai_status");
+
+export const setHealingAiConfig = (config: AiConfig) =>
+  invoke<void>("set_healing_ai_config", { config });
+
+// Token goes straight to the macOS Keychain; it is never returned (only a masked hint).
+export const saveClaudeToken = (token: string) => invoke<string>("save_claude_token", { token });
+
+export const deleteClaudeToken = () => invoke<void>("delete_claude_token");
+
+export const testClaudeAuth = () => invoke<string>("test_claude_auth");

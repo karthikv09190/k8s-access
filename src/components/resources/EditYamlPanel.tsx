@@ -50,20 +50,20 @@ export function EditYamlPanel({ context, namespace, kind, name }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-800 bg-slate-900">
-        <span className="text-xs text-slate-400 font-semibold">EDIT</span>
-        <span className="text-xs text-slate-600">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">EDIT</span>
+        <span className="text-xs text-slate-500 dark:text-slate-600">
           {kind}/{name}
         </span>
         {isDirty && (
-          <span className="text-xs text-yellow-400 ml-1">● unsaved</span>
+          <span className="text-xs text-amber-600 dark:text-yellow-400 ml-1">● unsaved</span>
         )}
         <div className="ml-auto flex gap-2">
           {isDirty && (
             <button
               onClick={reset}
-              className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 flex items-center gap-1"
+              className="text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 flex items-center gap-1"
             >
               <RotateCcw size={10} />
               Reset
@@ -84,8 +84,8 @@ export function EditYamlPanel({ context, namespace, kind, name }: Props) {
         <div
           className={`px-3 py-1.5 text-xs border-b ${
             saveMsg.ok
-              ? "bg-green-900/30 border-green-800 text-green-400"
-              : "bg-red-900/30 border-red-800 text-red-400"
+              ? "bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400"
+              : "bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400"
           }`}
         >
           {saveMsg.msg}
@@ -97,7 +97,7 @@ export function EditYamlPanel({ context, namespace, kind, name }: Props) {
         onChange={(e) => setEdited(e.target.value)}
         disabled={isLoading}
         spellCheck={false}
-        className="flex-1 p-3 text-xs font-mono text-slate-300 bg-slate-950 resize-none focus:outline-none leading-5"
+        className="flex-1 p-3 text-xs font-mono text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-950 resize-none focus:outline-none leading-5"
       />
     </div>
   );

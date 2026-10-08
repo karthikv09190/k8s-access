@@ -1,14 +1,33 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useAppStore } from "./store/app";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar } from "./components/layout/TopBar";
+import { TabBar, PAGE_TITLES } from "./components/layout/TabBar";
+import type { Tab } from "./components/layout/TabBar";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PodsPage } from "./pages/PodsPage";
 import { ComparePage } from "./pages/ComparePage";
+import { EventsPage } from "./pages/EventsPage";
 import { GenericResourcePage } from "./pages/GenericResourcePage";
+import { ProblemPodsPage } from "./pages/ProblemPodsPage";
+import { RbacVisualizerPage } from "./pages/RbacVisualizerPage";
+import { HelmPage } from "./pages/HelmPage";
+import { ResourceGraphPage } from "./pages/ResourceGraphPage";
+import { GitOpsPage } from "./pages/GitOpsPage";
+import { NamespaceCostPage } from "./pages/NamespaceCostPage";
+import { CrdBrowserPage } from "./pages/CrdBrowserPage";
+import { WebhookConfigsPage } from "./pages/WebhookConfigsPage";
+import { KubeconfigPage } from "./pages/KubeconfigPage";
+import { SelfHealingPage } from "./pages/SelfHealingPage";
 import { StatusBadge } from "./components/resources/ResourceTable";
+import { GlobalSearch } from "./components/GlobalSearch";
 import { checkKubectl, KubectlStatus } from "./lib/tauri";
 import { AlertTriangle, X, Terminal } from "lucide-react";
+
+// Apply initial theme before first render to avoid flash
+const _t = localStorage.getItem('k8s-theme') ?? 'dark';
+if (_t === 'dark') document.documentElement.classList.add('dark');
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +54,10 @@ function PageRouter({
       return <PodsPage key={onRefreshKey} />;
     case "compare":
       return <ComparePage key={onRefreshKey} />;
+    case "events":
+      return <EventsPage key={onRefreshKey} />;
+    case "problemPods":
+      return <ProblemPodsPage key={onRefreshKey} />;
     case "deployments":
       return (
         <GenericResourcePage
@@ -42,7 +65,7 @@ function PageRouter({
           title="Deployments"
           kind="Deployment"
           invokeCmd="list_deployments"
-          actionTabs={["yaml", "edit", "describe", "scale", "restart"]}
+          actionTabs={["yaml", "edit", "describe", "events", "scale", "restart", "rollout"]}
           extraColumns={[
             {
               header: "Replicas",
@@ -72,7 +95,7 @@ function PageRouter({
           title="StatefulSets"
           kind="StatefulSet"
           invokeCmd="list_statefulsets"
-          actionTabs={["yaml", "edit", "describe", "scale", "restart"]}
+          actionTabs={["yaml", "edit", "describe", "events", "scale", "restart", "rollout"]}
           extraColumns={[
             {
               header: "Replicas",
@@ -93,7 +116,7 @@ function PageRouter({
           title="DaemonSets"
           kind="DaemonSet"
           invokeCmd="list_daemonsets"
-          actionTabs={["yaml", "edit", "describe", "restart"]}
+          actionTabs={["yaml", "edit", "describe", "events", "restart"]}
           extraColumns={[
             {
               header: "Desired/Ready",
@@ -114,7 +137,7 @@ function PageRouter({
           title="ReplicaSets"
           kind="ReplicaSet"
           invokeCmd="list_replicasets"
-          actionTabs={["yaml", "edit", "describe", "scale"]}
+          actionTabs={["yaml", "edit", "describe", "events", "scale"]}
         />
       );
     case "jobs":
@@ -124,7 +147,7 @@ function PageRouter({
           title="Jobs"
           kind="Job"
           invokeCmd="list_jobs"
-          actionTabs={["yaml", "edit", "describe"]}
+          actionTabs={["yaml", "edit", "describe", "events"]}
           extraColumns={[
             {
               header: "Status",
@@ -147,7 +170,7 @@ function PageRouter({
           title="CronJobs"
           kind="CronJob"
           invokeCmd="list_cronjobs"
-          actionTabs={["trigger", "yaml", "edit", "describe"]}
+          actionTabs={["trigger", "yaml", "edit", "describe", "events"]}
           extraColumns={[
             {
               header: "Schedule",
@@ -187,7 +210,7 @@ function PageRouter({
           kind="Service"
           invokeCmd="list_services"
           supportsDelete
-          actionTabs={["yaml", "edit", "describe", "portforward"]}
+          actionTabs={["yaml", "edit", "describe", "events", "portforward"]}
           extraColumns={[
             {
               header: "Type",
@@ -213,7 +236,7 @@ function PageRouter({
           title="Ingresses"
           kind="Ingress"
           invokeCmd="list_ingresses"
-          actionTabs={["rules", "yaml", "edit", "describe"]}
+          actionTabs={["rules", "yaml", "edit", "describe", "events"]}
           extraColumns={[
             {
               header: "Hosts",
@@ -293,7 +316,7 @@ function PageRouter({
           title="Secrets"
           kind="Secret"
           invokeCmd="list_secrets"
-          actionTabs={["values", "yaml", "describe"]}
+          actionTabs={["values", "yaml", "describe", "events"]}
           extraColumns={[
             {
               header: "Type",
@@ -372,7 +395,7 @@ function PageRouter({
           kind="Node"
           invokeCmd="list_nodes"
           namespaced={false}
-          actionTabs={["nodemetrics", "yaml", "describe"]}
+          actionTabs={["nodeops", "nodemetrics", "yaml", "describe", "events"]}
           extraColumns={[
             {
               header: "Status",
@@ -442,6 +465,276 @@ function PageRouter({
           namespaced={false}
         />
       );
+    case "rbac":
+      return <RbacVisualizerPage key={onRefreshKey} />;
+    case "hpas":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="HorizontalPodAutoscalers"
+          kind="HorizontalPodAutoscaler"
+          invokeCmd="list_hpas"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Target",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400 truncate max-w-[140px] block">
+                  {r.spec?.scaleTargetRef?.kind}/{r.spec?.scaleTargetRef?.name}
+                </span>
+              ),
+            },
+            {
+              header: "Min/Max",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">
+                  {r.spec?.minReplicas ?? 1}/{r.spec?.maxReplicas ?? "?"}
+                </span>
+              ),
+              width: "70px",
+            },
+            {
+              header: "Current",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">
+                  {r.status?.currentReplicas ?? "?"}/{r.status?.desiredReplicas ?? "?"}
+                </span>
+              ),
+              width: "70px",
+            },
+          ]}
+        />
+      );
+    case "pdbs":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="PodDisruptionBudgets"
+          kind="PodDisruptionBudget"
+          invokeCmd="list_pdbs"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Min Available",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">{r.spec?.minAvailable ?? "-"}</span>
+              ),
+              width: "100px",
+            },
+            {
+              header: "Max Unavailable",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">{r.spec?.maxUnavailable ?? "-"}</span>
+              ),
+              width: "120px",
+            },
+            {
+              header: "Disruptions",
+              accessor: (r) => (
+                <span
+                  className={`text-xs font-medium ${
+                    (r.status?.disruptionsAllowed ?? 0) > 0 ? "text-green-400" : "text-amber-400"
+                  }`}
+                >
+                  {r.status?.disruptionsAllowed ?? 0} allowed
+                </span>
+              ),
+              width: "110px",
+            },
+          ]}
+        />
+      );
+    case "networkpolicies":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="NetworkPolicies"
+          kind="NetworkPolicy"
+          invokeCmd="list_networkpolicies"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Pod Selector",
+              accessor: (r) => {
+                const sel = r.spec?.podSelector?.matchLabels ?? {};
+                const entries = Object.entries(sel);
+                return (
+                  <span className="font-mono text-xs text-slate-400 truncate max-w-[160px] block">
+                    {entries.length === 0 ? "all pods" : entries.map(([k, v]) => `${k}=${v}`).join(", ")}
+                  </span>
+                );
+              },
+            },
+            {
+              header: "Policy Types",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">
+                  {(r.spec?.policyTypes ?? []).join(", ") || "-"}
+                </span>
+              ),
+              width: "130px",
+            },
+          ]}
+        />
+      );
+    case "resourcequotas":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="ResourceQuotas"
+          kind="ResourceQuota"
+          invokeCmd="list_resourcequotas"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Used / Hard",
+              accessor: (r) => {
+                const hard = r.status?.hard ?? {};
+                const used = r.status?.used ?? {};
+                const keys = Object.keys(hard).slice(0, 2);
+                return (
+                  <div className="flex flex-col gap-0.5">
+                    {keys.map((k) => (
+                      <span key={k} className="font-mono text-xs text-slate-400 truncate">
+                        {k}: {used[k] ?? "0"}/{hard[k]}
+                      </span>
+                    ))}
+                    {Object.keys(hard).length > 2 && (
+                      <span className="text-xs text-slate-600">+{Object.keys(hard).length - 2} more</span>
+                    )}
+                  </div>
+                );
+              },
+            },
+          ]}
+        />
+      );
+    case "limitranges":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="LimitRanges"
+          kind="LimitRange"
+          invokeCmd="list_limitranges"
+          actionTabs={["yaml", "edit", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Limit Types",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">
+                  {(r.spec?.limits ?? []).map((l: any) => l.type).join(", ") || "-"}
+                </span>
+              ),
+            },
+          ]}
+        />
+      );
+    case "storageclasses":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="StorageClasses"
+          kind="StorageClass"
+          invokeCmd="list_storageclasses"
+          namespaced={false}
+          actionTabs={["yaml", "describe", "events"]}
+          supportsDelete
+          extraColumns={[
+            {
+              header: "Provisioner",
+              accessor: (r) => (
+                <span className="font-mono text-xs text-slate-400 truncate max-w-[180px] block">
+                  {r.provisioner ?? "-"}
+                </span>
+              ),
+            },
+            {
+              header: "Reclaim",
+              accessor: (r) => (
+                <span className="text-xs text-slate-400">{r.reclaimPolicy ?? "-"}</span>
+              ),
+              width: "90px",
+            },
+            {
+              header: "Default",
+              accessor: (r) => {
+                const isDefault =
+                  r.metadata?.annotations?.["storageclass.kubernetes.io/is-default-class"] === "true";
+                return isDefault ? (
+                  <span className="text-xs text-green-400 font-medium">default</span>
+                ) : (
+                  <span className="text-xs text-slate-600">-</span>
+                );
+              },
+              width: "65px",
+            },
+          ]}
+        />
+      );
+    case "endpoints":
+      return (
+        <GenericResourcePage
+          key={onRefreshKey}
+          title="Endpoints"
+          kind="Endpoints"
+          invokeCmd="list_endpoints"
+          actionTabs={["yaml", "describe", "events"]}
+          extraColumns={[
+            {
+              header: "Addresses",
+              accessor: (r) => {
+                const subsets = r.subsets ?? [];
+                const addrs = subsets.flatMap((s: any) =>
+                  (s.addresses ?? []).map((a: any) => a.ip)
+                );
+                return (
+                  <span className="font-mono text-xs text-slate-400 truncate max-w-[200px] block">
+                    {addrs.length === 0
+                      ? "none"
+                      : addrs.slice(0, 3).join(", ") + (addrs.length > 3 ? ` +${addrs.length - 3}` : "")}
+                  </span>
+                );
+              },
+            },
+            {
+              header: "Ports",
+              accessor: (r) => {
+                const subsets = r.subsets ?? [];
+                const ports = subsets.flatMap((s: any) =>
+                  (s.ports ?? []).map((p: any) => p.port)
+                );
+                return (
+                  <span className="text-xs text-slate-400">
+                    {ports.length === 0 ? "-" : ports.join(", ")}
+                  </span>
+                );
+              },
+              width: "100px",
+            },
+          ]}
+        />
+      );
+    case "helm":
+      return <HelmPage key={onRefreshKey} />;
+    case "resourceGraph":
+      return <ResourceGraphPage key={onRefreshKey} />;
+    case "gitops":
+      return <GitOpsPage key={onRefreshKey} />;
+    case "namespaceCost":
+      return <NamespaceCostPage key={onRefreshKey} />;
+    case "crdBrowser":
+      return <CrdBrowserPage key={onRefreshKey} />;
+    case "webhooks":
+      return <WebhookConfigsPage key={onRefreshKey} />;
+    case "selfHealing":
+      return <SelfHealingPage key={onRefreshKey} />;
+    case "kubeconfig":
+      return <KubeconfigPage key={onRefreshKey} />;
     default:
       return (
         <div className="flex items-center justify-center h-full text-slate-500 text-sm">
@@ -498,21 +791,103 @@ function StartupBanner() {
 }
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  const theme = useAppStore((s) => s.theme);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const [tabs, setTabs] = useState<Tab[]>([
+    { id: "tab-1", page: "dashboard", title: "Dashboard" },
+  ]);
+  const [activeTabId, setActiveTabId] = useState("tab-1");
+
+  const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
+  const currentPage = activeTab.page;
   const [refreshKey, setRefreshKey] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  function navigateTo(page: string) {
+    const title = PAGE_TITLES[page] ?? page;
+    setTabs((prev) =>
+      prev.map((t) => (t.id === activeTabId ? { ...t, page, title } : t))
+    );
+  }
+
+  // Cross-page links (e.g. "View Healing Incident") request a page via the store.
+  const requestedPage = useAppStore((s) => s.requestedPage);
+  const requestPage = useAppStore((s) => s.requestPage);
+  useEffect(() => {
+    if (requestedPage) {
+      navigateTo(requestedPage);
+      requestPage(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedPage]);
+
+  function openNewTab(page = "dashboard") {
+    const id = `tab-${Date.now()}`;
+    const title = PAGE_TITLES[page] ?? page;
+    setTabs((prev) => [...prev.slice(0, 7), { id, page, title }]);
+    setActiveTabId(id);
+  }
+
+  function closeTab(id: string) {
+    setTabs((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((t) => t.id !== id);
+      if (id === activeTabId) {
+        setActiveTabId(next[next.length - 1].id);
+      }
+      return next;
+    });
+  }
+
+  // Global Cmd+K — opens GlobalSearch
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden">
-        <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
+        <Sidebar currentPage={currentPage} onNavigate={navigateTo} />
         <div className="flex-1 flex flex-col min-w-0">
           <TopBar onRefresh={() => setRefreshKey((k) => k + 1)} />
+          <TabBar
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onSelectTab={setActiveTabId}
+            onCloseTab={closeTab}
+            onNewTab={() => openNewTab()}
+          />
           <StartupBanner />
           <main className="flex-1 overflow-hidden">
-            <PageRouter page={currentPage} onRefreshKey={refreshKey} onNavigate={setCurrentPage} />
+            <PageRouter page={currentPage} onRefreshKey={refreshKey} onNavigate={navigateTo} />
           </main>
         </div>
       </div>
+      {searchOpen && (
+        <GlobalSearch
+          onClose={() => setSearchOpen(false)}
+          onNavigate={(page) => {
+            navigateTo(page);
+            setSearchOpen(false);
+          }}
+        />
+      )}
     </QueryClientProvider>
   );
 }

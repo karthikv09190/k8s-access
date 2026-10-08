@@ -48,11 +48,11 @@ export function ResourceTable<T>({
     <div className="overflow-auto">
       <table className="w-full text-sm border-collapse">
         <thead>
-          <tr className="border-b border-slate-800">
+          <tr className="border-b border-slate-200 dark:border-slate-800">
             {columns.map((col) => (
               <th
                 key={col.header}
-                className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                className="px-3 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-500 uppercase tracking-wider"
                 style={{ width: col.width }}
               >
                 {col.header}
@@ -70,17 +70,17 @@ export function ResourceTable<T>({
                 key={key}
                 onClick={() => onSelect?.(row)}
                 className={cn(
-                  "border-b border-slate-800/50 transition-colors",
+                  "border-b border-slate-200/50 dark:border-slate-800/50 transition-colors group",
                   onSelect && "cursor-pointer",
                   isSelected
-                    ? "bg-blue-600/10"
-                    : "hover:bg-white/5"
+                    ? "bg-blue-100 dark:bg-blue-600/10"
+                    : "hover:bg-black/5 dark:hover:bg-white/5"
                 )}
               >
                 {columns.map((col) => (
                   <td
                     key={col.header}
-                    className="px-3 py-2 text-slate-300"
+                    className="px-3 py-2 text-slate-700 dark:text-slate-300"
                   >
                     {col.accessor(row)}
                   </td>
@@ -94,7 +94,7 @@ export function ResourceTable<T>({
                             e.stopPropagation();
                             onSelect(row);
                           }}
-                          className="p-1 text-slate-400 hover:text-blue-400 rounded"
+                          className="p-1 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded"
                         >
                           <ChevronRight size={14} />
                         </button>
@@ -105,7 +105,7 @@ export function ResourceTable<T>({
                             e.stopPropagation();
                             onDelete(row);
                           }}
-                          className="p-1 text-slate-400 hover:text-red-400 rounded"
+                          className="p-1 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded"
                         >
                           <Trash2 size={14} />
                         </button>

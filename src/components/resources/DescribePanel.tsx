@@ -16,21 +16,21 @@ export function DescribePanel({ context, namespace, kind, name }: Props) {
   });
 
   return (
-    <div className="flex flex-col h-full bg-slate-950">
-      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-800 bg-slate-900 shrink-0">
-        <span className="text-xs text-slate-400 font-semibold">DESCRIBE</span>
-        <span className="text-xs text-slate-600">{kind}/{name}</span>
+    <div className="flex flex-col h-full bg-white dark:bg-slate-950">
+      <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
+        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">DESCRIBE</span>
+        <span className="text-xs text-slate-500 dark:text-slate-600">{kind}/{name}</span>
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="ml-auto text-slate-500 hover:text-slate-300 disabled:opacity-50"
+          className="ml-auto text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-50"
         >
           <RefreshCw size={11} className={isFetching ? "animate-spin" : ""} />
         </button>
       </div>
-      <pre className="flex-1 overflow-auto p-3 text-xs font-mono text-slate-300 leading-5 whitespace-pre">
+      <pre className="flex-1 overflow-auto p-3 text-xs font-mono text-slate-700 dark:text-slate-300 leading-5 whitespace-pre">
         {isLoading && "Loading..."}
-        {error && <span className="text-red-400">{String(error)}</span>}
+        {error && <span className="text-red-600 dark:text-red-400">{String(error)}</span>}
         {!isLoading && !error && (data || "No output.")}
       </pre>
     </div>
