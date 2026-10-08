@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Settings, X } from "lucide-react";
-import { getHealingAiStatus, getHealingPolicy, setHealingAiConfig, setHealingPolicy } from "../../lib/tauri";
-import type { AiConfig, HealingPolicy, RiskLevel } from "../../types/healing";
+import { KeyRound, Loader2, Settings, ShieldCheck, Trash2, X } from "lucide-react";
+import {
+  deleteClaudeToken, getHealingAiStatus, getHealingPolicy, saveClaudeToken, setHealingAiConfig, setHealingPolicy,
+  testClaudeAuth,
+} from "../../lib/tauri";
+import type { AiConfig, AiStatus, HealingPolicy, RiskLevel } from "../../types/healing";
 import { btn, errorText } from "./shared";
 
 const ACTIONS = ["RESTART_POD", "ROLLOUT_RESTART", "ROLLBACK_DEPLOYMENT", "SCALE_DEPLOYMENT", "SCALE_STATEFULSET"];
@@ -17,6 +20,116 @@ function Label({ text, hint }: { text: string; hint?: string }) {
     <div className="mb-1">
       <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">{text}</span>
       {hint && <span className="ml-1 text-[10px] text-slate-500">{hint}</span>}
+    </div>
+  );
+}
+
+function ClaudeAuth({ mode, onMode, status, savedMode, onChanged }: {
+  mode: AiConfig["authMode"];
+  onMode: (m: AiConfig["authMode"]) => void;
+  status: AiStatus;
+  savedMode: AiConfig["authMode"];
+  onChanged: () => void;
+}) {
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState<null | "save" | "delete" | "test">(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const login = status.cliLogin;
+
+  async function run(kind: "save" | "delete" | "test", fn: () => Promise<string>) {
+    setBusy(kind);
+    setMsg(null);
+    try {
+      setMsg({ ok: true, text: await fn() });
+      onChanged();
+    } catch (e) {
+      setMsg({ ok: false, text: errorText(e) });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="rounded border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <KeyRound size={13} className="text-indigo-500" />
+        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">Claude Code authorization</span>
+      </div>
+      <label className="flex items-start gap-2">
+        <input type="radio" checked={mode === "CLI_LOGIN"} onChange={() => onMode("CLI_LOGIN")} className="mt-0.5" />
+        <span>
+          Use this machine's <code>claude</code> login
+          <span className="block text-[10px] text-slate-500">
+            {login?.loggedIn
+              ? `Logged in (${login.authMethod ?? "unknown"}${login.orgName ? ` · ${login.orgName}` : ""})`
+              : "Not logged in — run `claude auth login` in a terminal"}
+          </span>
+        </span>
+      </label>
+      <label className="flex items-start gap-2">
+        <input type="radio" checked={mode === "KEYCHAIN_TOKEN"} onChange={() => onMode("KEYCHAIN_TOKEN")} className="mt-0.5" />
+        <span>
+          Use a long-lived Claude Code token stored in the macOS Keychain
+          <span className="block text-[10px] text-slate-500">
+            {status.tokenStored ? `Stored: ${status.tokenHint}` : "No token stored"}
+            {status.keychainError && ` · ${status.keychainError}`}
+          </span>
+        </span>
+      </label>
+
+      <div className="pl-5 space-y-1.5">
+        <p className="text-[10px] text-slate-500">
+          Run <code>claude setup-token</code> in Terminal (requires a Claude subscription), complete the browser sign-in,
+          and paste the printed token here. It is written only to the Keychain, passed only to the claude process, and
+          never shown again, logged, or saved to config files.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="sk-ant-oat01-…"
+            className={`${input} font-mono`}
+          />
+          <button
+            className={`${btn.base} ${btn.primary} shrink-0`}
+            disabled={!token.trim() || busy !== null}
+            onClick={() =>
+              run("save", async () => {
+                const hint = await saveClaudeToken(token);
+                setToken("");
+                return `Saved to Keychain (${hint}).`;
+              })
+            }
+          >
+            {busy === "save" && <Loader2 size={12} className="animate-spin" />} Save to Keychain
+          </button>
+          {status.tokenStored && (
+            <button
+              className={`${btn.base} ${btn.neutral} shrink-0`}
+              disabled={busy !== null}
+              onClick={() => run("delete", async () => { await deleteClaudeToken(); return "Token removed from Keychain."; })}
+            >
+              <Trash2 size={12} /> Remove
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          className={`${btn.base} ${btn.neutral}`}
+          disabled={busy !== null || mode !== savedMode || !status.cliPath}
+          title={mode !== savedMode ? "Save settings first" : "One tiny call (haiku, max $0.05); no cluster data sent"}
+          onClick={() => run("test", testClaudeAuth)}
+        >
+          {busy === "test" ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />} Test authentication
+        </button>
+        {mode !== savedMode && <span className="text-[10px] text-amber-600 dark:text-amber-400">Save settings to apply the new mode.</span>}
+      </div>
+      {msg && <p className={msg.ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}>{msg.text}</p>}
     </div>
   );
 }
@@ -90,6 +203,15 @@ export function HealingSettings({ onClose }: { onClose: () => void }) {
                 <input type="checkbox" checked={ai.enabled} onChange={(e) => setAi({ ...ai, enabled: e.target.checked })} />
                 <span>Enable AI diagnosis</span>
               </label>
+              {status && (
+                <ClaudeAuth
+                  mode={ai.authMode}
+                  onMode={(authMode) => setAi({ ...ai, authMode })}
+                  status={status}
+                  savedMode={status.config.authMode}
+                  onChanged={() => qc.invalidateQueries({ queryKey: ["healing-ai-status"] })}
+                />
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label text="Model" hint="blank = CLI default (e.g. sonnet, opus)" />

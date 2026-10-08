@@ -3,11 +3,12 @@
 
 use crate::healing::analysis;
 use crate::healing::audit::{log, AuditLog, AuditRecord};
+use crate::healing::credentials::{KeychainStore, OAuthToken, TokenStore};
 use crate::healing::detector;
 use crate::healing::gateway::{kubectl_argv, KubectlGateway};
 use crate::healing::model::{ExecutionRecord, HealingProposal, Incident, OperatorIdentity};
 use crate::healing::policy::HealingPolicy;
-use crate::healing::provider::{AiConfig, ClaudeCliProvider};
+use crate::healing::provider::{AiConfig, AuthMode, ClaudeCliProvider};
 use crate::healing::reader::{self, KubectlReader};
 use crate::healing::service::{
     ApproveRequest, ExecuteRequest, HealingService, HealingStats, RejectRequest, SystemClock,
@@ -371,7 +372,7 @@ pub async fn analyze_healing_incident(
     state: tauri::State<'_, HealingState>,
 ) -> Result<Incident, String> {
     let cfg = state.ai_config();
-    let provider = ClaudeCliProvider::from_config(&cfg);
+    let provider = stored_token(&cfg).and_then(|t| ClaudeCliProvider::from_config(&cfg, t));
     let result = analysis::analyze(
         &state.service,
         &KubectlReader,
@@ -408,6 +409,50 @@ pub struct AiStatus {
     pub cli_path: Option<String>,
     pub available: bool,
     pub message: String,
+    /// Keychain token present (value never returned; only a masked hint).
+    pub token_stored: bool,
+    pub token_hint: Option<String>,
+    pub keychain_error: Option<String>,
+    /// `claude auth status` for the machine's own CLI login.
+    pub cli_login: Option<CliLogin>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CliLogin {
+    pub logged_in: bool,
+    pub auth_method: Option<String>,
+    pub org_name: Option<String>,
+}
+
+/// Keychain token, read only when the active mode needs it.
+fn stored_token(cfg: &AiConfig) -> Result<Option<OAuthToken>, String> {
+    match cfg.auth_mode {
+        AuthMode::KeychainToken => KeychainStore.load(),
+        AuthMode::CliLogin => Ok(None),
+    }
+}
+
+async fn cli_login_status(cli: &std::path::Path) -> Option<CliLogin> {
+    let out = tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::process::Command::new(cli)
+            .args(["auth", "status", "--json"])
+            // Report the machine login, not a token from this process env.
+            .env_remove("CLAUDE_CODE_OAUTH_TOKEN")
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .ok()?
+    .ok()?;
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout).ok()?;
+    let s = |k: &str| v.get(k).and_then(|x| x.as_str()).map(str::to_string);
+    Some(CliLogin {
+        logged_in: v.get("loggedIn").and_then(|x| x.as_bool()).unwrap_or(false),
+        auth_method: s("authMethod"),
+        org_name: s("orgName"),
+    })
 }
 
 #[tauri::command]
@@ -416,16 +461,36 @@ pub async fn get_healing_ai_status(
 ) -> Result<AiStatus, String> {
     let config = state.ai_config();
     let cli = ClaudeCliProvider::locate();
-    let (available, message) = match (&cli, config.enabled) {
-        (_, false) => (false, "AI diagnosis is disabled.".to_string()),
-        (None, true) => (
+    let (token, keychain_error) = match KeychainStore.load() {
+        Ok(t) => (t, None),
+        Err(e) => (None, Some(e)),
+    };
+    let cli_login = match &cli {
+        Some(p) => cli_login_status(p).await,
+        None => None,
+    };
+    let (available, message) = match (&cli, config.enabled, config.auth_mode) {
+        (_, false, _) => (false, "AI diagnosis is disabled.".to_string()),
+        (None, true, _) => (
             false,
-            "claude CLI not found. Install Claude Code and run `claude` once to log in."
+            "claude CLI not found. Install Claude Code to use AI diagnosis.".to_string(),
+        ),
+        (Some(_), true, AuthMode::KeychainToken) if token.is_none() => (
+            false,
+            "No Claude Code token stored. Run `claude setup-token` and save the token in Self-Healing settings."
                 .to_string(),
         ),
-        (Some(_), true) => (
+        (Some(_), true, AuthMode::KeychainToken) => (
             true,
-            "AI diagnosis enabled via local claude CLI (tools disabled).".to_string(),
+            "AI diagnosis enabled via claude CLI using the Keychain token (tools disabled).".to_string(),
+        ),
+        (Some(_), true, AuthMode::CliLogin) if !cli_login.as_ref().map_or(false, |l| l.logged_in) => (
+            false,
+            "claude CLI is not logged in. Run `claude auth login`, or store a long-lived token.".to_string(),
+        ),
+        (Some(_), true, AuthMode::CliLogin) => (
+            true,
+            "AI diagnosis enabled via the local claude CLI login (tools disabled).".to_string(),
         ),
     };
     Ok(AiStatus {
@@ -433,7 +498,45 @@ pub async fn get_healing_ai_status(
         cli_path: cli.map(|p| p.display().to_string()),
         available,
         message,
+        token_stored: token.is_some(),
+        token_hint: token.map(|t| t.hint()),
+        keychain_error,
+        cli_login,
     })
+}
+
+/// Stores a `claude setup-token` token in the macOS Keychain. The value is
+/// validated, never logged, and never returned to the frontend.
+#[tauri::command]
+pub async fn save_claude_token(token: String) -> Result<String, String> {
+    let t = OAuthToken::parse(&token)?;
+    KeychainStore.save(&t)?;
+    log::info("Claude Code token saved to Keychain");
+    Ok(t.hint())
+}
+
+#[tauri::command]
+pub async fn delete_claude_token() -> Result<(), String> {
+    KeychainStore.delete()?;
+    log::info("Claude Code token removed from Keychain");
+    Ok(())
+}
+
+/// Makes one minimal Claude call (haiku, $0.05 cap) with the configured
+/// authentication to prove it works. Sends no cluster data.
+#[tauri::command]
+pub async fn test_claude_auth(state: tauri::State<'_, HealingState>) -> Result<String, String> {
+    let cfg = state.ai_config();
+    let provider = ClaudeCliProvider::from_config(&cfg, stored_token(&cfg)?)?;
+    let model = provider.test_auth().await?;
+    Ok(format!(
+        "Authenticated ({}) — test call answered by {}",
+        match cfg.auth_mode {
+            AuthMode::KeychainToken => "Keychain token",
+            AuthMode::CliLogin => "claude CLI login",
+        },
+        model.unwrap_or_else(|| "Claude".into())
+    ))
 }
 
 #[tauri::command]

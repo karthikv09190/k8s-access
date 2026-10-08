@@ -234,6 +234,7 @@ export interface AiConfig {
   timeoutSecs: number;
   maxContextChars: number;
   maxBudgetUsd: number;
+  authMode: "CLI_LOGIN" | "KEYCHAIN_TOKEN";
 }
 
 export interface AiStatus {
@@ -241,6 +242,10 @@ export interface AiStatus {
   cliPath: string | null;
   available: boolean;
   message: string;
+  tokenStored: boolean;
+  tokenHint: string | null;
+  keychainError: string | null;
+  cliLogin: { loggedIn: boolean; authMethod: string | null; orgName: string | null } | null;
 }
 
 export interface HealingPolicy {

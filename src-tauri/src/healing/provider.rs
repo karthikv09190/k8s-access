@@ -10,6 +10,7 @@
 //! added by implementing `DiagnosisProvider`; API keys for those belong in the
 //! macOS Keychain, never in config files or logs.
 
+use super::credentials::OAuthToken;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -35,6 +36,18 @@ pub struct AiConfig {
     pub max_context_chars: usize,
     /// Hard spend cap per diagnosis passed to the CLI.
     pub max_budget_usd: f64,
+    /// How the claude CLI authenticates.
+    pub auth_mode: AuthMode,
+}
+
+/// `CliLogin`: whatever `claude` is logged in as on this machine.
+/// `KeychainToken`: a long-lived token from `claude setup-token`, stored in
+/// the macOS Keychain and passed only to the CLI process environment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AuthMode {
+    CliLogin,
+    KeychainToken,
 }
 
 impl Default for AiConfig {
@@ -46,6 +59,7 @@ impl Default for AiConfig {
             timeout_secs: 180,
             max_context_chars: 60_000,
             max_budget_usd: 1.0,
+            auth_mode: AuthMode::CliLogin,
         }
     }
 }
@@ -133,6 +147,8 @@ pub struct ClaudeCliProvider {
     model: Option<String>,
     timeout: Duration,
     max_budget_usd: f64,
+    /// Set in `KeychainToken` mode; passed only via the child environment.
+    token: Option<OAuthToken>,
 }
 
 impl ClaudeCliProvider {
@@ -156,7 +172,9 @@ impl ClaudeCliProvider {
         candidates.into_iter().find(|p| p.is_file())
     }
 
-    pub fn from_config(cfg: &AiConfig) -> Result<Self, String> {
+    /// `stored_token` is the Keychain token (if any); it is used only in
+    /// `KeychainToken` mode, which fails closed when no token is stored.
+    pub fn from_config(cfg: &AiConfig, stored_token: Option<OAuthToken>) -> Result<Self, String> {
         let binary =
             Self::locate().ok_or("claude CLI not found (install Claude Code and log in)")?;
         if let Some(m) = &cfg.model {
@@ -164,12 +182,58 @@ impl ClaudeCliProvider {
                 return Err(format!("invalid model name {:?}", m));
             }
         }
+        let token = match cfg.auth_mode {
+            AuthMode::CliLogin => None,
+            AuthMode::KeychainToken => Some(stored_token.ok_or(
+                "no Claude Code token in the Keychain — run `claude setup-token` and save the token in Self-Healing settings",
+            )?),
+        };
         Ok(Self {
             binary,
             model: cfg.model.clone(),
             timeout: Duration::from_secs(cfg.timeout_secs.clamp(10, 900)),
             max_budget_usd: cfg.max_budget_usd.clamp(0.05, 20.0),
+            token,
         })
+    }
+
+    /// Variables set on / removed from the CLI child process. In token mode
+    /// ANTHROPIC_API_KEY is removed so the Keychain token is what's used.
+    pub fn env_plan(&self) -> (Vec<(&'static str, String)>, Vec<&'static str>) {
+        match &self.token {
+            Some(t) => (
+                vec![("CLAUDE_CODE_OAUTH_TOKEN", t.expose().to_string())],
+                vec!["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"],
+            ),
+            None => (vec![], vec![]),
+        }
+    }
+
+    /// Minimal real call (haiku, 5-cent cap) proving the credentials work.
+    pub async fn test_auth(&self) -> Result<Option<String>, String> {
+        let probe = Self {
+            binary: self.binary.clone(),
+            model: Some("haiku".into()),
+            timeout: Duration::from_secs(60),
+            max_budget_usd: 0.05,
+            token: self.token.clone(),
+        };
+        let schema = serde_json::json!({
+            "type": "object", "properties": {"ok": {"type": "boolean"}},
+            "required": ["ok"], "additionalProperties": false
+        });
+        let r = probe
+            .diagnose(
+                "Reply with {\"ok\": true}.",
+                "Authentication check.",
+                &schema,
+            )
+            .await?;
+        if r.output.get("ok").and_then(Value::as_bool) == Some(true) {
+            Ok(r.model)
+        } else {
+            Err("unexpected response from Claude".into())
+        }
     }
 
     pub fn args(&self, system_prompt: &str, schema: &Value) -> Vec<String> {
@@ -211,8 +275,14 @@ impl DiagnosisProvider for ClaudeCliProvider {
         // Empty scratch directory: no project files, CLAUDE.md or settings.
         let dir = std::env::temp_dir().join(format!("k8s-manager-ai-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let (set_env, remove_env) = self.env_plan();
         let result = async {
-            let mut child = tokio::process::Command::new(&self.binary)
+            let mut cmd = tokio::process::Command::new(&self.binary);
+            for k in remove_env {
+                cmd.env_remove(k);
+            }
+            cmd.envs(set_env);
+            let mut child = cmd
                 .args(self.args(system_prompt, schema))
                 .current_dir(&dir)
                 .stdin(std::process::Stdio::piped())
@@ -285,6 +355,7 @@ mod tests {
             model: Some("sonnet".into()),
             timeout: Duration::from_secs(5),
             max_budget_usd: 1.0,
+            token: None,
         };
         let args = p.args("sys", &json!({}));
         let pos = args.iter().position(|a| a == "--tools").unwrap();
@@ -313,12 +384,71 @@ mod tests {
             ..Default::default()
         };
         if ClaudeCliProvider::locate().is_some() {
-            assert!(ClaudeCliProvider::from_config(&cfg).is_err());
+            assert!(ClaudeCliProvider::from_config(&cfg, None).is_err());
         }
     }
 
     #[test]
     fn ai_disabled_by_default() {
         assert!(!AiConfig::default().enabled);
+        assert_eq!(AiConfig::default().auth_mode, AuthMode::CliLogin);
+    }
+
+    const TOKEN: &str = "sk-ant-oat01-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-wxyz";
+
+    fn provider(token: Option<OAuthToken>) -> ClaudeCliProvider {
+        ClaudeCliProvider {
+            binary: "claude".into(),
+            model: None,
+            timeout: Duration::from_secs(5),
+            max_budget_usd: 1.0,
+            token,
+        }
+    }
+
+    #[test]
+    fn token_only_reaches_child_env_never_argv() {
+        let p = provider(Some(OAuthToken::parse(TOKEN).unwrap()));
+        let (set, remove) = p.env_plan();
+        assert_eq!(set, vec![("CLAUDE_CODE_OAUTH_TOKEN", TOKEN.to_string())]);
+        assert!(remove.contains(&"ANTHROPIC_API_KEY"));
+        assert!(
+            !p.args("sys", &json!({}))
+                .iter()
+                .any(|a| a.contains("sk-ant-")),
+            "token never in argv"
+        );
+        let (set, remove) = provider(None).env_plan();
+        assert!(
+            set.is_empty() && remove.is_empty(),
+            "CLI login mode leaves env untouched"
+        );
+    }
+
+    #[test]
+    fn keychain_mode_fails_closed_without_token() {
+        let cfg = AiConfig {
+            enabled: true,
+            auth_mode: AuthMode::KeychainToken,
+            ..Default::default()
+        };
+        if ClaudeCliProvider::locate().is_some() {
+            let err = ClaudeCliProvider::from_config(&cfg, None).err().unwrap();
+            assert!(err.contains("setup-token"));
+            let ok = ClaudeCliProvider::from_config(&cfg, Some(OAuthToken::parse(TOKEN).unwrap()))
+                .unwrap();
+            assert!(ok.token.is_some());
+            // CLI-login mode ignores a stored token.
+            let cli = AiConfig {
+                auth_mode: AuthMode::CliLogin,
+                ..cfg
+            };
+            assert!(
+                ClaudeCliProvider::from_config(&cli, Some(OAuthToken::parse(TOKEN).unwrap()))
+                    .unwrap()
+                    .token
+                    .is_none()
+            );
+        }
     }
 }

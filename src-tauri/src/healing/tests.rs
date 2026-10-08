@@ -1203,7 +1203,7 @@ mod ai {
             max_budget_usd: 0.5,
             ..Default::default()
         };
-        let provider = crate::healing::provider::ClaudeCliProvider::from_config(&cfg)
+        let provider = crate::healing::provider::ClaudeCliProvider::from_config(&cfg, None)
             .expect("claude CLI installed");
         let result =
             analysis::analyze(&svc, &FakeReader, Ok(&provider), &cfg, &inc.id, false).await;

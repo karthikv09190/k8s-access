@@ -5,6 +5,7 @@
 pub mod analysis;
 pub mod audit;
 pub mod context;
+pub mod credentials;
 pub mod detector;
 pub mod diagnosis;
 pub mod error;

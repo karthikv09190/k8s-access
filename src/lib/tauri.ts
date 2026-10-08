@@ -488,3 +488,10 @@ export const getHealingAiStatus = () => invoke<AiStatus>("get_healing_ai_status"
 
 export const setHealingAiConfig = (config: AiConfig) =>
   invoke<void>("set_healing_ai_config", { config });
+
+// Token goes straight to the macOS Keychain; it is never returned (only a masked hint).
+export const saveClaudeToken = (token: string) => invoke<string>("save_claude_token", { token });
+
+export const deleteClaudeToken = () => invoke<void>("delete_claude_token");
+
+export const testClaudeAuth = () => invoke<string>("test_claude_auth");
