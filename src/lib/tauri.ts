@@ -4,6 +4,18 @@ import type {
   CompareResult,
   KubeContext,
 } from "../types/k8s";
+import type {
+  AiConfig,
+  AiContextPreview,
+  AiStatus,
+  AuditRecord,
+  ExecutionRecord,
+  HealingPolicy,
+  HealingProposal,
+  HealingStats,
+  Incident,
+  ScanResult,
+} from "../types/healing";
 
 // ── Clusters ──────────────────────────────────────────────────────────────────
 export interface KubectlStatus {
@@ -415,3 +427,64 @@ export const getNamespaceYamlBundle = (args: {
   context: string;
   namespace: string;
 }) => invoke<string>("get_namespace_yaml_bundle", args);
+
+// ── Self-Healing ──────────────────────────────────────────────────────────────
+// Every mutation is gated in Rust (approval, hash, cluster, expiry, policy,
+// pre-flight). These wrappers only carry the operator's explicit choices.
+export const scanHealingIncidents = (context: string) =>
+  invoke<ScanResult>("scan_healing_incidents", { context });
+
+export const getHealingIncidents = (context?: string) =>
+  invoke<Incident[]>("get_healing_incidents", { context: context ?? null });
+
+export const getHealingIncident = (id: string) =>
+  invoke<Incident>("get_healing_incident", { id });
+
+export const getHealingStats = (context?: string) =>
+  invoke<HealingStats>("get_healing_stats", { context: context ?? null });
+
+export const getHealingAudit = (incidentId?: string) =>
+  invoke<AuditRecord[]>("get_healing_audit", { incidentId: incidentId ?? null });
+
+export const getHealingCommandPreview = (incidentId: string, proposalId: string) =>
+  invoke<string[]>("get_healing_command_preview", { incidentId, proposalId });
+
+export const analyzeHealingIncident = (incidentId: string, force = false) =>
+  invoke<Incident>("analyze_healing_incident", { incidentId, force });
+
+export const previewHealingAiContext = (incidentId: string) =>
+  invoke<AiContextPreview>("preview_healing_ai_context", { incidentId });
+
+export const approveHealing = (request: {
+  incidentId: string;
+  proposalId: string;
+  proposalHash: string;
+  context: string;
+  highRiskConfirmed: boolean;
+}) => invoke<Incident>("approve_healing", { request });
+
+export const rejectHealing = (request: {
+  incidentId: string;
+  proposalId: string;
+  reason: string | null;
+}) => invoke<Incident>("reject_healing", { request });
+
+export const executeApprovedHealing = (request: {
+  incidentId: string;
+  proposalId: string;
+  proposalHash: string;
+  context: string;
+}) => invoke<ExecutionRecord>("execute_approved_healing", { request });
+
+export const proposeHealingRollback = (incidentId: string) =>
+  invoke<HealingProposal>("propose_healing_rollback", { incidentId });
+
+export const getHealingPolicy = () => invoke<HealingPolicy>("get_healing_policy");
+
+export const setHealingPolicy = (policy: HealingPolicy) =>
+  invoke<void>("set_healing_policy", { policy });
+
+export const getHealingAiStatus = () => invoke<AiStatus>("get_healing_ai_status");
+
+export const setHealingAiConfig = (config: AiConfig) =>
+  invoke<void>("set_healing_ai_config", { config });

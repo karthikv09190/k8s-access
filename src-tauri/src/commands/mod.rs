@@ -14,3 +14,4 @@ pub mod kubeconfig;
 pub mod watch;
 pub mod kubectl_cmd;
 pub mod export;
+pub mod healing;

@@ -1,0 +1,454 @@
+//! Tauri commands for Self-Healing. Thin wrappers: every check lives in
+//! `healing::service`, so nothing the frontend sends can skip approval.
+
+use crate::healing::analysis;
+use crate::healing::audit::{log, AuditLog, AuditRecord};
+use crate::healing::detector;
+use crate::healing::gateway::{kubectl_argv, KubectlGateway};
+use crate::healing::model::{ExecutionRecord, HealingProposal, Incident, OperatorIdentity};
+use crate::healing::policy::HealingPolicy;
+use crate::healing::provider::{AiConfig, ClaudeCliProvider};
+use crate::healing::reader::{self, KubectlReader};
+use crate::healing::service::{
+    ApproveRequest, ExecuteRequest, HealingService, HealingStats, RejectRequest, SystemClock,
+};
+use crate::healing::store::HealingStore;
+use crate::healing::verifier::VerifyConfig;
+use crate::kubectl::kubectl_path;
+use serde::Serialize;
+use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
+use tauri::Emitter;
+
+pub type Service = HealingService<KubectlGateway, SystemClock>;
+
+pub struct HealingState {
+    pub service: Arc<Service>,
+    pub policy_path: Option<PathBuf>,
+    pub ai: RwLock<AiConfig>,
+    pub ai_path: Option<PathBuf>,
+}
+
+impl HealingState {
+    /// Persistent state under `<app_data>/healing/`. Falls back to in-memory
+    /// (with a logged warning) if the directory cannot be used.
+    pub fn open(app_data: Option<PathBuf>) -> Self {
+        let dir = app_data.map(|d| d.join("healing"));
+        if let Some(d) = &dir {
+            if let Err(e) = std::fs::create_dir_all(d) {
+                log::info(&format!(
+                    "cannot create {}: {} — using in-memory state",
+                    d.display(),
+                    e
+                ));
+            }
+        }
+        let (store, audit, policy, policy_path) = match &dir {
+            Some(d) if d.is_dir() => {
+                let store = HealingStore::open(d.join("incidents.json")).unwrap_or_else(|e| {
+                    log::info(&format!("{} — starting with an empty incident store", e));
+                    HealingStore::in_memory()
+                });
+                let policy_path = d.join("policy.json");
+                let policy = load_policy(&policy_path);
+                (
+                    store,
+                    AuditLog::open(d.join("audit.jsonl")),
+                    policy,
+                    Some(policy_path),
+                )
+            }
+            _ => (
+                HealingStore::in_memory(),
+                AuditLog::in_memory(),
+                HealingPolicy::default(),
+                None,
+            ),
+        };
+        let service = HealingService::new(
+            KubectlGateway,
+            SystemClock,
+            store,
+            policy,
+            audit,
+            VerifyConfig::default(),
+        );
+        service.recover_after_restart();
+        let ai_path = dir
+            .as_ref()
+            .filter(|d| d.is_dir())
+            .map(|d| d.join("ai.json"));
+        let ai = ai_path
+            .as_ref()
+            .and_then(|p| std::fs::read(p).ok())
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .unwrap_or_default();
+        Self {
+            service: Arc::new(service),
+            policy_path,
+            ai: RwLock::new(ai),
+            ai_path,
+        }
+    }
+
+    fn ai_config(&self) -> AiConfig {
+        self.ai.read().unwrap().clone()
+    }
+}
+
+fn load_policy(path: &PathBuf) -> HealingPolicy {
+    match std::fs::read(path) {
+        Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_else(|e| {
+            // A broken policy file falls back to the (restrictive) defaults.
+            log::info(&format!(
+                "invalid {}: {} — using default policy",
+                path.display(),
+                e
+            ));
+            HealingPolicy::default()
+        }),
+        Err(_) => {
+            let p = HealingPolicy::default();
+            let _ = std::fs::write(path, serde_json::to_vec_pretty(&p).unwrap_or_default());
+            p
+        }
+    }
+}
+
+/// Local operator identity: OS account + the Kubernetes user the context
+/// authenticates as (best effort). The app has no login system.
+async fn operator_for(context: &str) -> OperatorIdentity {
+    let os_user = std::env::var("USER")
+        .or_else(|_| std::env::var("LOGNAME"))
+        .unwrap_or_else(|_| "unknown".into());
+    let whoami = tokio::process::Command::new(kubectl_path())
+        .args([
+            "auth",
+            "whoami",
+            "--context",
+            context,
+            "-o",
+            "jsonpath={.status.userInfo.username}",
+        ])
+        .output();
+    let k8s_user = match tokio::time::timeout(Duration::from_secs(8), whoami).await {
+        Ok(Ok(out)) if out.status.success() => {
+            Some(String::from_utf8_lossy(&out.stdout).trim().to_string()).filter(|s| !s.is_empty())
+        }
+        _ => None,
+    };
+    OperatorIdentity::local(os_user, k8s_user)
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HealingUpdated {
+    incident_id: String,
+    status: String,
+}
+
+fn emit_updated(app: &tauri::AppHandle, inc: &Incident) {
+    let _ = app.emit(
+        "healing-updated",
+        HealingUpdated {
+            incident_id: inc.id.clone(),
+            status: inc.status.to_string(),
+        },
+    );
+}
+
+// ── Reads ────────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn get_healing_incidents(
+    context: Option<String>,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Vec<Incident>, String> {
+    Ok(state
+        .service
+        .incidents()
+        .into_iter()
+        .filter(|i| context.as_deref().map_or(true, |c| c == i.binding.context))
+        .collect())
+}
+
+#[tauri::command]
+pub async fn get_healing_incident(
+    id: String,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Incident, String> {
+    Ok(state.service.incident(&id)?)
+}
+
+#[tauri::command]
+pub async fn get_healing_stats(
+    context: Option<String>,
+    state: tauri::State<'_, HealingState>,
+) -> Result<HealingStats, String> {
+    Ok(state.service.stats(context.as_deref()))
+}
+
+#[tauri::command]
+pub async fn get_healing_audit(
+    incident_id: Option<String>,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Vec<AuditRecord>, String> {
+    Ok(match incident_id {
+        Some(id) => state.service.audit_for(&id),
+        None => state.service.recent_audit(500),
+    })
+}
+
+/// The exact kubectl argv the executor will run for a proposal.
+#[tauri::command]
+pub async fn get_healing_command_preview(
+    incident_id: String,
+    proposal_id: String,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Vec<String>, String> {
+    let inc = state.service.incident(&incident_id)?;
+    let p: &HealingProposal = inc
+        .proposal(&proposal_id)
+        .ok_or_else(|| format!("Proposal {} not found for this incident.", proposal_id))?;
+    let mut argv = vec!["kubectl".to_string()];
+    argv.extend(kubectl_argv(&p.binding.context, &p.action));
+    Ok(argv)
+}
+
+#[tauri::command]
+pub async fn get_healing_policy(
+    state: tauri::State<'_, HealingState>,
+) -> Result<HealingPolicy, String> {
+    Ok(state.service.policy())
+}
+
+/// Policy is configuration only; it can restrict healing but never approve or
+/// execute anything, and CRITICAL actions stay blocked regardless.
+#[tauri::command]
+pub async fn set_healing_policy(
+    policy: HealingPolicy,
+    state: tauri::State<'_, HealingState>,
+) -> Result<(), String> {
+    if let Some(path) = &state.policy_path {
+        let bytes = serde_json::to_vec_pretty(&policy).map_err(|e| e.to_string())?;
+        std::fs::write(path, bytes).map_err(|e| e.to_string())?;
+    }
+    log::info("policy updated");
+    state.service.set_policy(policy);
+    Ok(())
+}
+
+// ── Approval workflow ─────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub async fn approve_healing(
+    request: ApproveRequest,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Incident, String> {
+    let operator = operator_for(&request.context).await;
+    let inc = state.service.approve(&request, &operator)?;
+    emit_updated(&app, &inc);
+    Ok(inc)
+}
+
+#[tauri::command]
+pub async fn reject_healing(
+    request: RejectRequest,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Incident, String> {
+    let ctx = state
+        .service
+        .incident(&request.incident_id)?
+        .binding
+        .context;
+    let operator = operator_for(&ctx).await;
+    let inc = state.service.reject(&request, &operator)?;
+    emit_updated(&app, &inc);
+    Ok(inc)
+}
+
+/// Executes a previously approved proposal. All ten pre-execution checks are
+/// enforced in `HealingService::execute_approved`; on success a read-only
+/// verification task is started.
+#[tauri::command]
+pub async fn execute_approved_healing(
+    request: ExecuteRequest,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<ExecutionRecord, String> {
+    let operator = operator_for(&request.context).await;
+    let service = state.service.clone();
+    let result = service.execute_approved(&request, &operator).await;
+    if let Ok(inc) = service.incident(&request.incident_id) {
+        emit_updated(&app, &inc);
+    }
+    let record = result?;
+    if record.success {
+        let id = request.incident_id.clone();
+        tauri::async_runtime::spawn(async move {
+            let _ = service.verify(&id).await;
+            if let Ok(inc) = service.incident(&id) {
+                emit_updated(&app, &inc);
+            }
+        });
+    }
+    Ok(record)
+}
+
+/// Builds a rollback PROPOSAL after failed healing. It must be approved like
+/// any other proposal before anything runs.
+#[tauri::command]
+pub async fn propose_healing_rollback(
+    incident_id: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<HealingProposal, String> {
+    let result = state.service.propose_rollback(&incident_id).await;
+    if let Ok(inc) = state.service.incident(&incident_id) {
+        emit_updated(&app, &inc);
+    }
+    Ok(result?)
+}
+
+// ── Detection (read-only) ─────────────────────────────────────────────────────
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScanResult {
+    pub new_incidents: Vec<Incident>,
+    pub open_incidents: usize,
+    pub findings: usize,
+    pub scanned_at: i64,
+}
+
+/// Runs the deterministic detectors against `context` and records incidents.
+/// Read-only against the cluster; creates no proposals and calls no AI.
+#[tauri::command]
+pub async fn scan_healing_incidents(
+    context: String,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<ScanResult, String> {
+    let binding = reader::binding_for(&context)?;
+    let snapshot = reader::collect_snapshot(&KubectlReader, &context).await?;
+    let now = state.service.now();
+    let findings = detector::detect(&snapshot, now);
+    let finding_count = findings.len();
+    let mut new_incidents = Vec::new();
+    for inc in detector::correlate(&binding, &snapshot, findings) {
+        let (stored, is_new) = state.service.upsert_detected(inc);
+        if is_new {
+            let _ = app.emit("healing-incident", &stored);
+            new_incidents.push(stored);
+        }
+    }
+    let open_incidents = state
+        .service
+        .incidents()
+        .iter()
+        .filter(|i| i.binding.context == context && !i.status.is_closed())
+        .count();
+    Ok(ScanResult {
+        new_incidents,
+        open_incidents,
+        findings: finding_count,
+        scanned_at: now,
+    })
+}
+
+// ── AI diagnosis (operator-initiated) ─────────────────────────────────────────
+
+/// Analyze (or re-analyze with `force`) an incident. Produces at most a
+/// PENDING_APPROVAL proposal — never executes anything.
+#[tauri::command]
+pub async fn analyze_healing_incident(
+    incident_id: String,
+    force: Option<bool>,
+    app: tauri::AppHandle,
+    state: tauri::State<'_, HealingState>,
+) -> Result<Incident, String> {
+    let cfg = state.ai_config();
+    let provider = ClaudeCliProvider::from_config(&cfg);
+    let result = analysis::analyze(
+        &state.service,
+        &KubectlReader,
+        provider.as_ref().map_err(Clone::clone),
+        &cfg,
+        &incident_id,
+        force.unwrap_or(false),
+    )
+    .await;
+    if let Ok(inc) = state.service.incident(&incident_id) {
+        emit_updated(&app, &inc);
+    }
+    Ok(result?)
+}
+
+/// The exact sanitized context an analysis would send to the AI provider.
+#[tauri::command]
+pub async fn preview_healing_ai_context(
+    incident_id: String,
+    state: tauri::State<'_, HealingState>,
+) -> Result<serde_json::Value, String> {
+    let inc = state.service.incident(&incident_id)?;
+    let cfg = state.ai_config();
+    let (context, meta) = analysis::preview(&KubectlReader, &inc, &cfg).await;
+    Ok(
+        serde_json::json!({ "context": context, "meta": meta, "provider": "claude-cli", "enabled": cfg.enabled }),
+    )
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiStatus {
+    pub config: AiConfig,
+    pub cli_path: Option<String>,
+    pub available: bool,
+    pub message: String,
+}
+
+#[tauri::command]
+pub async fn get_healing_ai_status(
+    state: tauri::State<'_, HealingState>,
+) -> Result<AiStatus, String> {
+    let config = state.ai_config();
+    let cli = ClaudeCliProvider::locate();
+    let (available, message) = match (&cli, config.enabled) {
+        (_, false) => (false, "AI diagnosis is disabled.".to_string()),
+        (None, true) => (
+            false,
+            "claude CLI not found. Install Claude Code and run `claude` once to log in."
+                .to_string(),
+        ),
+        (Some(_), true) => (
+            true,
+            "AI diagnosis enabled via local claude CLI (tools disabled).".to_string(),
+        ),
+    };
+    Ok(AiStatus {
+        config,
+        cli_path: cli.map(|p| p.display().to_string()),
+        available,
+        message,
+    })
+}
+
+#[tauri::command]
+pub async fn set_healing_ai_config(
+    config: AiConfig,
+    state: tauri::State<'_, HealingState>,
+) -> Result<(), String> {
+    if let Some(path) = &state.ai_path {
+        let bytes = serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?;
+        std::fs::write(path, bytes).map_err(|e| e.to_string())?;
+    }
+    log::info(&format!(
+        "AI config updated: enabled={} model={:?}",
+        config.enabled, config.model
+    ));
+    *state.ai.write().unwrap() = config;
+    Ok(())
+}

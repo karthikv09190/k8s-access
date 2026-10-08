@@ -39,6 +39,7 @@ export const PAGE_TITLES: Record<string, string> = {
   helm: "Helm",
   rbac: "RBAC Viz",
   problemPods: "Problems",
+  selfHealing: "Self-Healing",
   resourceGraph: "Res. Graph",
   gitops: "GitOps",
   namespaceCost: "Cost",

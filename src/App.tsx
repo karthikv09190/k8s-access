@@ -19,6 +19,7 @@ import { NamespaceCostPage } from "./pages/NamespaceCostPage";
 import { CrdBrowserPage } from "./pages/CrdBrowserPage";
 import { WebhookConfigsPage } from "./pages/WebhookConfigsPage";
 import { KubeconfigPage } from "./pages/KubeconfigPage";
+import { SelfHealingPage } from "./pages/SelfHealingPage";
 import { StatusBadge } from "./components/resources/ResourceTable";
 import { GlobalSearch } from "./components/GlobalSearch";
 import { checkKubectl, KubectlStatus } from "./lib/tauri";
@@ -730,6 +731,8 @@ function PageRouter({
       return <CrdBrowserPage key={onRefreshKey} />;
     case "webhooks":
       return <WebhookConfigsPage key={onRefreshKey} />;
+    case "selfHealing":
+      return <SelfHealingPage key={onRefreshKey} />;
     case "kubeconfig":
       return <KubeconfigPage key={onRefreshKey} />;
     default:
@@ -814,6 +817,17 @@ export default function App() {
       prev.map((t) => (t.id === activeTabId ? { ...t, page, title } : t))
     );
   }
+
+  // Cross-page links (e.g. "View Healing Incident") request a page via the store.
+  const requestedPage = useAppStore((s) => s.requestedPage);
+  const requestPage = useAppStore((s) => s.requestPage);
+  useEffect(() => {
+    if (requestedPage) {
+      navigateTo(requestedPage);
+      requestPage(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedPage]);
 
   function openNewTab(page = "dashboard") {
     const id = `tab-${Date.now()}`;

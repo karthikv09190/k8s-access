@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../store/app";
 import { listPods, listNodes } from "../lib/tauri";
+import { ProblemPodHealingCell } from "../components/healing/HealingLink";
 import {
   AlertTriangle,
   Activity,
@@ -179,6 +180,7 @@ function OOMTable({ entries }: { entries: OOMEntry[] }) {
           <th className="px-3 py-2 w-20 text-center">Exit Code</th>
           <th className="px-3 py-2 w-32">OOMKill Time</th>
           <th className="px-3 py-2 w-24 text-center">Restarts</th>
+          <th className="px-3 py-2">Self-Healing</th>
         </tr>
       </thead>
       <tbody>
@@ -209,6 +211,9 @@ function OOMTable({ entries }: { entries: OOMEntry[] }) {
                 {e.restartCount}
               </span>
             </td>
+            <td className="px-3 py-2">
+              <ProblemPodHealingCell namespace={e.namespace} pod={e.podName} />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -236,6 +241,7 @@ function CrashTable({ entries }: { entries: CrashEntry[] }) {
           <th className="px-3 py-2 w-24 text-center">Restarts</th>
           <th className="px-3 py-2 w-32">Last Started</th>
           <th className="px-3 py-2 w-40">Reason</th>
+          <th className="px-3 py-2">Self-Healing</th>
         </tr>
       </thead>
       <tbody>
@@ -265,6 +271,9 @@ function CrashTable({ entries }: { entries: CrashEntry[] }) {
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20">
                 {e.reason}
               </span>
+            </td>
+            <td className="px-3 py-2">
+              <ProblemPodHealingCell namespace={e.namespace} pod={e.podName} />
             </td>
           </tr>
         ))}

@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { Bell, X } from "lucide-react";
+import { useAppStore } from "../../store/app";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ClusterAlert {
   id: string;
   context: string;
-  severity: "warning" | "critical";
+  severity: "info" | "warning" | "critical";
   message: string;
   timestamp: string; // RFC3339
+  /** Set on Self-Healing notifications: clicking opens the incident. */
+  incidentId?: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -44,7 +47,7 @@ function relativeTime(isoString: string): string {
 
 function SeverityDot({ severity }: { severity: ClusterAlert["severity"] }) {
   const color =
-    severity === "critical" ? "bg-red-400" : "bg-amber-400";
+    severity === "critical" ? "bg-red-400" : severity === "info" ? "bg-sky-400" : "bg-amber-400";
   return <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 mt-1 ${color}`} />;
 }
 
@@ -52,6 +55,8 @@ function SeverityDot({ severity }: { severity: ClusterAlert["severity"] }) {
 
 export function NotificationCenter() {
   const [alerts, setAlerts] = useState<ClusterAlert[]>(loadAlerts);
+  const setFocusedIncidentId = useAppStore((s) => s.setFocusedIncidentId);
+  const requestPage = useAppStore((s) => s.requestPage);
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -167,6 +172,18 @@ export function NotificationCenter() {
                       <p className="text-xs text-slate-800 dark:text-slate-200 leading-snug break-words">
                         {alert.message}
                       </p>
+                      {alert.incidentId && (
+                        <button
+                          onClick={() => {
+                            setFocusedIncidentId(alert.incidentId!);
+                            requestPage("selfHealing");
+                            setOpen(false);
+                          }}
+                          className="mt-1 text-[10px] text-rose-600 dark:text-rose-400 hover:underline"
+                        >
+                          View Healing Incident →
+                        </button>
+                      )}
                       <div className="flex gap-2 mt-1 text-[10px] text-slate-500 dark:text-slate-500">
                         <span className="font-mono truncate max-w-[140px]">{alert.context}</span>
                         <span>·</span>

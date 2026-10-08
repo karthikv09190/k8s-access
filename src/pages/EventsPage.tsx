@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../store/app";
 import { listEvents, type K8sEvent } from "../lib/tauri";
+import { HealingIncidentLink } from "../components/healing/HealingLink";
 import {
   Activity,
   AlertTriangle,
@@ -118,6 +119,16 @@ function EventRow({
             <span className="text-slate-500">{event.objectKind}/</span>
             {event.objectName}
           </span>
+          {event.eventType === "Warning" && (
+            <span className="ml-2">
+              <HealingIncidentLink
+                kind={event.objectKind}
+                namespace={event.namespace || null}
+                name={event.objectName}
+                showStatus={false}
+              />
+            </span>
+          )}
         </td>
 
         {/* Reason */}

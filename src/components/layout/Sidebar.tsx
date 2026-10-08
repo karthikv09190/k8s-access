@@ -13,6 +13,7 @@ import {
   Gauge,
   GitCompare,
   Globe,
+  HeartPulse,
   HardDrive,
   Key,
   Layers,
@@ -56,6 +57,7 @@ const NAV: NavGroup[] = [
       { label: "Nodes", icon: <Server size={14} />, page: "nodes" },
       { label: "Events", icon: <Activity size={14} />, page: "events" },
       { label: "Problem Pods", icon: <AlertTriangle size={14} />, page: "problemPods" },
+      { label: "Self-Healing", icon: <HeartPulse size={14} />, page: "selfHealing" },
     ],
   },
   {

@@ -7,6 +7,7 @@ import { PortForwardPanel } from "./PortForwardPanel";
 import { YamlPanel } from "../resources/YamlPanel";
 import { EditYamlPanel } from "../resources/EditYamlPanel";
 import { EventsPanel } from "../resources/EventsPanel";
+import { HealingIncidentLink } from "../healing/HealingLink";
 
 type Tab = "logs" | "terminal" | "exec" | "events" | "portforward" | "yaml" | "edit";
 
@@ -48,6 +49,7 @@ export function PodActionsPanel({ context, pod, onClose }: Props) {
           <p className="font-mono text-xs text-slate-800 dark:text-slate-200 truncate">{podName}</p>
           <p className="text-xs text-slate-500 truncate">{namespace}</p>
         </div>
+        <HealingIncidentLink kind="Pod" namespace={namespace} name={podName} showStatus={false} />
         <button
           onClick={copyName}
           title="Copy pod name"

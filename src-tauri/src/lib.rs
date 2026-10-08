@@ -1,4 +1,5 @@
 mod commands;
+mod healing;
 pub mod kubectl;
 
 /// Prepend common binary directories to PATH so macOS .app bundles can find
@@ -61,7 +62,15 @@ use commands::{
     watch::{clear_cluster_alerts, start_cluster_watch, stop_cluster_watch, WatchState},
     kubectl_cmd::run_kubectl_command,
     export::get_namespace_yaml_bundle,
+    healing::{
+        approve_healing, execute_approved_healing, get_healing_audit, get_healing_command_preview,
+        get_healing_incident, get_healing_incidents, get_healing_policy, get_healing_stats,
+        propose_healing_rollback, reject_healing, set_healing_policy, HealingState,
+        analyze_healing_incident, get_healing_ai_status, preview_healing_ai_context,
+        scan_healing_incidents, set_healing_ai_config,
+    },
 };
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -79,6 +88,19 @@ pub fn run() {
         .manage(LogStreamState::default())
         .manage(TerminalState::default())
         .manage(WatchState::default())
+        .setup(|app| {
+            let data_dir = app.path().app_data_dir().ok();
+            let state = HealingState::open(data_dir);
+            // Self-Healing events → existing notification center.
+            let handle = app.handle().clone();
+            state.service.set_notifier(Box::new(move |record| {
+                if let Some(n) = healing::notify::notification_for(record) {
+                    let _ = handle.emit("cluster-alert", &n);
+                }
+            }));
+            app.manage(state);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // clusters
             check_kubectl,
@@ -175,6 +197,23 @@ pub fn run() {
             set_current_context,
             test_context_connection,
             import_kubeconfig,
+            // self-healing (every mutation requires approval; see healing::service)
+            get_healing_incidents,
+            get_healing_incident,
+            get_healing_stats,
+            get_healing_audit,
+            get_healing_command_preview,
+            get_healing_policy,
+            set_healing_policy,
+            approve_healing,
+            reject_healing,
+            execute_approved_healing,
+            propose_healing_rollback,
+            scan_healing_incidents,
+            analyze_healing_incident,
+            preview_healing_ai_context,
+            get_healing_ai_status,
+            set_healing_ai_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

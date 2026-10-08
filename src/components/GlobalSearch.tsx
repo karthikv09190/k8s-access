@@ -11,6 +11,7 @@ import {
   listSecrets,
   listNodes,
   listIngresses,
+  getHealingIncidents,
 } from "../lib/tauri";
 
 interface SearchResult {
@@ -18,6 +19,8 @@ interface SearchResult {
   name: string;
   namespace: string;
   page: string;
+  /** Set for Self-Healing incidents/proposals: opens that incident. */
+  incidentId?: string;
 }
 
 interface GlobalSearchProps {
@@ -76,6 +79,7 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
 
   const activeContext = useAppStore((s) => s.activeContext);
   const activeNamespace = useAppStore((s) => s.activeNamespace);
+  const setFocusedIncidentId = useAppStore((s) => s.setFocusedIncidentId);
 
   // Fetch all resources on open
   useEffect(() => {
@@ -104,6 +108,14 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
       listSecrets(args).then((r) => toResults("Secret", r)),
       listNodes(clusterArgs).then((r) => toResults("Node", r)),
       listIngresses(args).then((r) => toResults("Ingress", r)),
+      getHealingIncidents(activeContext).then((incs) =>
+        incs.flatMap((inc): SearchResult[] => {
+          const base = { name: inc.resource.name, namespace: inc.resource.namespace ?? "", page: "selfHealing", incidentId: inc.id };
+          const out: SearchResult[] = [{ ...base, kind: "Incident" }];
+          if (inc.status === "PENDING_APPROVAL") out.push({ ...base, kind: "Healing Proposal" });
+          return out;
+        }),
+      ),
     ]).then((settled) => {
       const combined: SearchResult[] = [];
       for (const result of settled) {
@@ -182,14 +194,16 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
       if (e.key === "Enter") {
         e.preventDefault();
         if (query.trim() && results.length > 0) {
-          onNavigate(results[selectedIndex]?.page ?? "");
+          const r = results[selectedIndex];
+          if (r?.incidentId) setFocusedIncidentId(r.incidentId);
+          onNavigate(r?.page ?? "");
         } else if (!query.trim()) {
           onNavigate(QUICK_SHORTCUTS[selectedIndex]?.page ?? "");
         }
         return;
       }
     },
-    [query, results, selectedIndex, onClose, onNavigate]
+    [query, results, selectedIndex, onClose, onNavigate, setFocusedIncidentId]
   );
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -244,7 +258,10 @@ export function GlobalSearch({ onClose, onNavigate }: GlobalSearchProps) {
                 <button
                   key={`${r.kind}-${r.namespace}-${r.name}-${i}`}
                   data-idx={i}
-                  onClick={() => onNavigate(r.page)}
+                  onClick={() => {
+                    if (r.incidentId) setFocusedIncidentId(r.incidentId);
+                    onNavigate(r.page);
+                  }}
                   className={`flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors ${
                     i === selectedIndex
                       ? "bg-blue-100 dark:bg-blue-600/20 text-blue-900 dark:text-blue-100"

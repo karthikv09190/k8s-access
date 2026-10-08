@@ -10,6 +10,7 @@ import { IngressRulesPanel } from "./IngressRulesPanel";
 import { SecretValuesView } from "./SecretValuesPanel";
 import { NodeMetricsPanel, PodMetricsPanel } from "./MetricsPanel";
 import { EventsPanel } from "./EventsPanel";
+import { HealingIncidentLink } from "../healing/HealingLink";
 import { PortForwardPanel } from "../pods/PortForwardPanel";
 import { RolloutPanel } from "./RolloutPanel";
 import { NodeOpsPanel } from "./NodeOpsPanel";
@@ -90,6 +91,7 @@ export function ResourceActionsPanel({
           <p className="font-mono text-xs text-slate-800 dark:text-slate-200 truncate">{name}</p>
           {ns && <p className="text-xs text-slate-500 truncate">{ns}</p>}
         </div>
+        <HealingIncidentLink kind={kind} namespace={ns || null} name={name} showStatus={false} />
         <button
           onClick={copyName}
           title="Copy name"
