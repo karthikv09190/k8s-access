@@ -126,7 +126,11 @@ export function SelfHealingPage() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <span className="text-[11px] text-slate-500">
-            {scan.isFetching ? "scanning…" : scan.data ? `scanned ${ago(scan.data.scannedAt)} · ${scan.data.findings} findings` : ""}
+            {scan.isFetching
+              ? "scanning…"
+              : scan.data
+                ? `scanned ${ago(scan.data.scannedAt)} · ${scan.data.findings} findings${scan.data.resolved ? ` · ${scan.data.resolved} resolved` : ""}${scan.data.complete ? "" : " · partial scan (no auto-resolve)"}`
+                : ""}
           </span>
           <RefreshSelect value={scanEvery} onChange={setScanEvery} />
           <button

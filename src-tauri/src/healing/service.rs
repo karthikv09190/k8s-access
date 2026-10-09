@@ -382,6 +382,46 @@ impl<G: ClusterGateway, C: Clock> HealingService<G, C> {
         (inc, is_new)
     }
 
+    /// After a COMPLETE scan of `context`: incidents whose key was not seen
+    /// and that have no approval in flight become RESOLVED. Bookkeeping only —
+    /// never touches the cluster. Returns how many were resolved.
+    pub fn resolve_absent(
+        &self,
+        context: &str,
+        present_keys: &std::collections::HashSet<String>,
+    ) -> usize {
+        use IncidentStatus::*;
+        let mut store = self.store.lock().unwrap();
+        let now = self.clock.now();
+        let mut resolved = Vec::new();
+        for inc in store.incidents.values_mut() {
+            if inc.binding.context != context || present_keys.contains(&inc.key) {
+                continue;
+            }
+            if matches!(
+                inc.status,
+                Detected | ManualInterventionRequired | Expired | Stale
+            ) && transition(inc, Resolved, now, "no longer detected").is_ok()
+            {
+                resolved.push(inc.clone());
+            }
+        }
+        if !resolved.is_empty() {
+            let _ = store.save();
+        }
+        drop(store);
+        for inc in &resolved {
+            self.record(
+                inc,
+                AuditEvent::IncidentResolved,
+                None,
+                None,
+                "no longer detected by scan",
+            );
+        }
+        resolved.len()
+    }
+
     pub fn begin_analysis(&self, incident_id: &str) -> HealingResult<Incident> {
         let inc = self.with_incident(incident_id, |inc, now| {
             transition(inc, IncidentStatus::Analyzing, now, "analysis requested")?;

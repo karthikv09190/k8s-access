@@ -1563,3 +1563,53 @@ fn only_the_approved_executor_can_mint_permits_or_apply() {
         "exactly one permit mint site"
     );
 }
+
+#[tokio::test]
+async fn incidents_no_longer_detected_are_resolved_but_pending_approvals_are_kept() {
+    let (svc, gw, _) = setup();
+    // Detected, no longer seen → RESOLVED.
+    let mut gone = incident("payments");
+    gone.key = "gone".into();
+    let (gone, _) = svc.upsert_detected(gone);
+    // Still detected → untouched.
+    let mut seen = incident("payments");
+    seen.key = "seen".into();
+    let (seen, _) = svc.upsert_detected(seen);
+    // Pending approval, not seen → untouched (proposal expiry handles it).
+    let (pending, _) = pending(&svc, "web").await;
+    // Other context → untouched.
+    let mut other = incident("payments");
+    other.key = "other".into();
+    other.binding.context = "cluster-b".into();
+    let (other, _) = svc.upsert_detected(other);
+
+    let present: std::collections::HashSet<String> = ["seen".to_string()].into();
+    assert_eq!(svc.resolve_absent(CTX, &present), 1);
+    assert_eq!(
+        svc.incident(&gone.id).unwrap().status,
+        IncidentStatus::Resolved
+    );
+    assert_eq!(
+        svc.incident(&seen.id).unwrap().status,
+        IncidentStatus::Detected
+    );
+    assert_eq!(
+        svc.incident(&pending.id).unwrap().status,
+        IncidentStatus::PendingApproval
+    );
+    assert_eq!(
+        svc.incident(&other.id).unwrap().status,
+        IncidentStatus::Detected
+    );
+    assert!(svc
+        .audit_for(&gone.id)
+        .iter()
+        .any(|r| r.event == AuditEvent::IncidentResolved));
+    assert_eq!(gw.mutations(), 0);
+
+    // Recurrence after resolution opens a fresh incident.
+    let mut again = incident("payments");
+    again.key = "gone".into();
+    let (again, is_new) = svc.upsert_detected(again);
+    assert!(is_new && again.id != gone.id);
+}

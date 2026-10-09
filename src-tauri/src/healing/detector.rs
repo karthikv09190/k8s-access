@@ -25,12 +25,16 @@ pub struct HelmReleaseLite {
 /// Read-only cluster state for one context.
 #[derive(Debug, Clone, Default)]
 pub struct ClusterSnapshot {
-    /// Pods, Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs.
+    /// Pods, Deployments, ReplicaSets, StatefulSets, DaemonSets, Jobs, CronJobs.
     pub workloads: Vec<Value>,
     pub nodes: Vec<Value>,
     /// Warning events.
     pub events: Vec<Value>,
     pub helm: Vec<HelmReleaseLite>,
+    /// True only when every source (workloads, nodes, events, Helm) was read
+    /// successfully — required before auto-resolving incidents that are no
+    /// longer detected, so a failed read never "resolves" anything.
+    pub complete: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -462,8 +466,6 @@ impl OwnerIndex {
         let mut name = r.name.clone();
         for _ in 0..4 {
             match self.owners.get(&(ns.clone(), kind.clone(), name.clone())) {
-                // CronJobs are not collected; the Job is the actionable root.
-                Some((k, _)) if k == "CronJob" => break,
                 Some((k, n)) => {
                     kind = k.clone();
                     name = n.clone();
@@ -761,6 +763,32 @@ mod tests {
         assert!(
             !codes.iter().any(|(n, _)| n == "done"),
             "succeeded pods ignored"
+        );
+    }
+
+    #[test]
+    fn failed_cronjob_runs_group_into_one_cronjob_incident() {
+        let failed_job = |n: &str| {
+            json!({"kind":"Job","metadata":{"name":n,"namespace":"a",
+            "ownerReferences":[{"kind":"CronJob","name":"hubspot-api-nightly","controller":true}]},
+            "status":{"conditions":[{"type":"Failed","status":"True","reason":"BackoffLimitExceeded","message":"x"}]}})
+        };
+        let snap = ClusterSnapshot {
+            workloads: vec![
+                json!({"kind":"CronJob","metadata":{"name":"hubspot-api-nightly","namespace":"a","uid":"cj-uid"}}),
+                failed_job("hubspot-api-nightly-29704650"),
+                failed_job("hubspot-api-nightly-29706090"),
+                failed_job("hubspot-api-nightly-29714730"),
+            ],
+            ..Default::default()
+        };
+        let incs = correlate(&binding(), &snap, detect(&snap, NOW));
+        assert_eq!(incs.len(), 1);
+        assert_eq!(incs[0].key, "ctx/a/CronJob/hubspot-api-nightly");
+        assert_eq!(incs[0].resource.uid.as_deref(), Some("cj-uid"));
+        assert_eq!(
+            incs[0].affected.iter().filter(|r| r.kind == "Job").count(),
+            3
         );
     }
 

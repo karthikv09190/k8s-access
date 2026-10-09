@@ -15,7 +15,8 @@ export type IncidentStatus =
   | "STALE"
   | "ROLLBACK_PROPOSED"
   | "ROLLED_BACK"
-  | "MANUAL_INTERVENTION_REQUIRED";
+  | "MANUAL_INTERVENTION_REQUIRED"
+  | "RESOLVED";
 
 export type Severity = "INFO" | "WARNING" | "CRITICAL";
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -269,6 +270,8 @@ export interface ScanResult {
   openIncidents: number;
   findings: number;
   scannedAt: number;
+  resolved: number;
+  complete: boolean;
 }
 
 export interface AiConfig {
@@ -341,4 +344,4 @@ export interface BatchStatus {
 }
 
 /** Statuses that need no further action. */
-export const CLOSED_STATUSES: IncidentStatus[] = ["HEALED", "ROLLED_BACK", "REJECTED"];
+export const CLOSED_STATUSES: IncidentStatus[] = ["HEALED", "ROLLED_BACK", "REJECTED", "RESOLVED"];

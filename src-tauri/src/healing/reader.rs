@@ -249,21 +249,24 @@ pub async fn collect_snapshot<R: ClusterReader>(
         .list_json(
             context,
             None,
-            "pods,deployments,replicasets,statefulsets,daemonsets,jobs",
+            "pods,deployments,replicasets,statefulsets,daemonsets,jobs,cronjobs",
             None,
         )
         .await?;
-    let nodes = reader
-        .list_json(context, None, "nodes", None)
-        .await
-        .unwrap_or_default();
+    let nodes = reader.list_json(context, None, "nodes", None).await;
     let events = reader
         .list_json(context, None, "events", Some("type=Warning"))
-        .await
-        .unwrap_or_default();
+        .await;
     // Helm is optional: missing binary or RBAC must not break detection.
-    let helm = reader.helm_releases(context).await.unwrap_or_default();
+    let helm = reader.helm_releases(context).await;
+    let complete = nodes.is_ok() && events.is_ok() && helm.is_ok();
+    let (nodes, events, helm) = (
+        nodes.unwrap_or_default(),
+        events.unwrap_or_default(),
+        helm.unwrap_or_default(),
+    );
     Ok(ClusterSnapshot {
+        complete,
         workloads,
         nodes,
         events,

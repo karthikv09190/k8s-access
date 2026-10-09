@@ -346,6 +346,10 @@ pub struct ScanResult {
     pub open_incidents: usize,
     pub findings: usize,
     pub scanned_at: i64,
+    /// Incidents marked RESOLVED because they are no longer detected.
+    pub resolved: usize,
+    /// False when nodes/events/Helm could not be read (no auto-resolve).
+    pub complete: bool,
 }
 
 /// Runs the deterministic detectors against `context` and records incidents.
@@ -362,13 +366,21 @@ pub async fn scan_healing_incidents(
     let findings = detector::detect(&snapshot, now);
     let finding_count = findings.len();
     let mut new_incidents = Vec::new();
+    let mut present = std::collections::HashSet::new();
     for inc in detector::correlate(&binding, &snapshot, findings) {
+        present.insert(inc.key.clone());
         let (stored, is_new) = state.service.upsert_detected(inc);
         if is_new {
             let _ = app.emit("healing-incident", &stored);
             new_incidents.push(stored);
         }
     }
+    // Only a complete scan may conclude that something is gone.
+    let resolved = if snapshot.complete {
+        state.service.resolve_absent(&context, &present)
+    } else {
+        0
+    };
     let open_incidents = state
         .service
         .incidents()
@@ -380,6 +392,8 @@ pub async fn scan_healing_incidents(
         open_incidents,
         findings: finding_count,
         scanned_at: now,
+        resolved,
+        complete: snapshot.complete,
     })
 }
 

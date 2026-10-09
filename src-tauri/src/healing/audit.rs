@@ -30,6 +30,7 @@ pub enum AuditEvent {
     RollbackProposed,
     Interrupted,
     ChatExchange,
+    IncidentResolved,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

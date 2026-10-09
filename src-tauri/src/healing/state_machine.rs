@@ -9,7 +9,9 @@ use super::model::IncidentStatus::{self, *};
 
 pub fn allowed_next(from: IncidentStatus) -> &'static [IncidentStatus] {
     match from {
-        Detected => &[Analyzing, ManualInterventionRequired],
+        // RESOLVED: no longer detected by a complete scan. Only from states
+        // with no approval in flight; never involves the cluster.
+        Detected => &[Analyzing, ManualInterventionRequired, Resolved],
         // AI failure returns to Detected (manual remediation still possible).
         Analyzing => &[ProposalReady, Detected, ManualInterventionRequired],
         ProposalReady => &[PendingApproval, Analyzing, ManualInterventionRequired],
@@ -22,11 +24,12 @@ pub fn allowed_next(from: IncidentStatus) -> &'static [IncidentStatus] {
         Failed => &[RollbackProposed, Analyzing, ManualInterventionRequired],
         RollbackProposed => &[PendingApproval, ManualInterventionRequired],
         Rejected => &[Analyzing],
-        Expired => &[Analyzing],
-        Stale => &[Analyzing],
-        ManualInterventionRequired => &[Analyzing],
+        Expired => &[Analyzing, Resolved],
+        Stale => &[Analyzing, Resolved],
+        ManualInterventionRequired => &[Analyzing, Resolved],
         Healed => &[],
         RolledBack => &[],
+        Resolved => &[],
     }
 }
 

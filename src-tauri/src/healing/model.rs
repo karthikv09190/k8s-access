@@ -32,10 +32,12 @@ pub enum IncidentStatus {
     RollbackProposed,
     RolledBack,
     ManualInterventionRequired,
+    /// No longer detected by a complete scan (nothing was changed by us).
+    Resolved,
 }
 
 impl IncidentStatus {
-    pub const ALL: [IncidentStatus; 15] = [
+    pub const ALL: [IncidentStatus; 16] = [
         IncidentStatus::Detected,
         IncidentStatus::Analyzing,
         IncidentStatus::ProposalReady,
@@ -51,13 +53,17 @@ impl IncidentStatus {
         IncidentStatus::RollbackProposed,
         IncidentStatus::RolledBack,
         IncidentStatus::ManualInterventionRequired,
+        IncidentStatus::Resolved,
     ];
 
     /// Incident no longer needs attention.
     pub fn is_closed(self) -> bool {
         matches!(
             self,
-            IncidentStatus::Healed | IncidentStatus::RolledBack | IncidentStatus::Rejected
+            IncidentStatus::Healed
+                | IncidentStatus::RolledBack
+                | IncidentStatus::Rejected
+                | IncidentStatus::Resolved
         )
     }
 }
